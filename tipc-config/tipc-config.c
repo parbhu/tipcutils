@@ -61,7 +61,7 @@ typedef void (*VOIDFUNCPTR) ();
 #define MAX_COMMANDS 8
 #define MAX_TLVS_SPACE 33000		/* must be a multiple of 4 bytes */
 #define ADDR_AREA 30
-#define REPLY_LEN 256
+#define REPLY_LEN 1024
 #define ARGS_SIZE 128
 
 /* local variables */
