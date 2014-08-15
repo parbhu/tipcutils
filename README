@@ -1,10 +1,13 @@
 TIPC utilities package for Linux README
 
-Last updated: 08 Aug 2012
+Last updated: 02 Sep 2014
 
 
 This directory contains a variety of utility programs for use with Linux TIPC,
 including:
+
+0) tipc
+A new configuration tool for tipc that utilizes the new tipc netlink kernel API
 
 1) tipc-config
 An application for run-time configuration and monitoring of TIPC.
