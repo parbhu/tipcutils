@@ -10,7 +10,8 @@ tipc_SOURCES=tipc.c tipc.h \
 	media.c \
 	link.c \
 	net.c \
-	version.c
+	version.c \
+	addr.c
 tipc_CFLAGS=-Werror $(LIBNL3_CFLAGS)
 tipc_LDADD=-lrt $(LIBNL3_LIBS) -lnl-genl-3
 tipc_LDFLAGS=-I /usr/include/libnl3/
