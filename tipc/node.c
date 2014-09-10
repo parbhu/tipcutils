@@ -69,15 +69,15 @@ static int _list(struct nl_msg *nl_msg, void *arg)
 		return NL_STOP;
 
 	addr = nla_get_u32(attrs[TIPC_NLA_NODE_ADDR]);
-	printf("<%u.%u.%u>",
+	printf("<%u.%u.%u>: ",
 		tipc_zone(addr),
 		tipc_cluster(addr),
 		tipc_node(addr));
 
 	if (attrs[TIPC_NLA_NODE_UP])
-		printf("  up\n");
+		printf("up\n");
 	else
-		printf("  down\n");
+		printf("down\n");
 
 	return NL_OK;
 }

@@ -83,7 +83,7 @@ static int _list(struct nl_msg *nl_msg, void *arg)
 
 	name = nla_get_string(attrs[TIPC_NLA_LINK_NAME]);
 
-	printf("%s  ", name);
+	printf("%s: ", name);
 
 	if (attrs[TIPC_NLA_LINK_UP])
 		printf("up\n");
