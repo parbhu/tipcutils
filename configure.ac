@@ -17,7 +17,7 @@ AC_PROG_LIBTOOL
 # Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
-PKG_CHECK_MODULES(LIBNL3, libnl-3.0 >= 3.2.7)
+PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
 
 CFLAGS="$CFLAGS -Wall -fno-strict-aliasing"
 
