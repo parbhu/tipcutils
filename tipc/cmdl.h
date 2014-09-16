@@ -34,6 +34,7 @@
 #include <getopt.h>
 
 TAILQ_HEAD(cmd_head, cmd_struct);
+TAILQ_HEAD(cmd_head_option, cmd_option);
 
 struct cmd_option {
 	char *key;
@@ -57,8 +58,8 @@ struct cmd_struct {
 	char *usage;
 	char *desc;
 	struct cmd_head *children;
+	struct cmd_head_option options;
 
-	TAILQ_HEAD(cmd_head_option, cmd_option) options;
 	TAILQ_ENTRY(cmd_struct) list;
 };
 
@@ -87,7 +88,6 @@ struct cmd_struct {
 		    _add_cmd_##cliname##_##clifunc##_(void) \
 	{ \
 		add_cmd(clilist, &_cmd_##cliname##_##clifunc##_); \
-		TAILQ_INIT(&_cmd_##cliname##_##clifunc##_.options); \
 	} \
 	static struct cmd_struct _cmd_##cliname##_##clifunc##_ = { \
 		.name = #cliname, \
@@ -95,6 +95,7 @@ struct cmd_struct {
 		.func = clifunc, \
 		.desc = clidesc, \
 		.children = NULL, \
+		.options = TAILQ_HEAD_INITIALIZER(_cmd_##cliname##_##clifunc##_.options), \
 	}
 
 #define ADD_OPT(cliname, clifunc, clikey, cliusage, clidesc) \
