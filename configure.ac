@@ -7,6 +7,10 @@ AC_CONFIG_HEADERS([config.h])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
+AC_CHECK_PROG([has_pkg_config],[pkg-config],[yes])
+if test "x$has_pkg_config" != "xyes"; then
+	AC_MSG_ERROR([pkg-config not found])
+fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/tipc.h])
