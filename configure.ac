@@ -6,15 +6,10 @@ AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
-
-# Checks for libraries.
+AC_PROG_LIBTOOL
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/tipc.h])
-
-AC_PROG_LIBTOOL
-
-# Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
 PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
@@ -59,7 +54,7 @@ AC_CONFIG_FILES([
 	scripts/Makefile
 	])
 AM_CONDITIONAL(WITH_SCRIPTS, false)
-AC_ARG_ENABLE(scripts, 
+AC_ARG_ENABLE(scripts,
         [  --enable-scripts  Install utility scripts in sysconfdir],
 	 AM_CONDITIONAL(WITH_SCRIPTS, true))
 
