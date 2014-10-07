@@ -56,7 +56,7 @@ void server_receiveConnectionless
 	int sockfd_S;		  /* socket to use */
 	struct sockaddr_tipc addr;/* address of socket */
 
-	debug ("server_receiveConnectionless: Connectionless sink: %dx%d(max) bytes in\n",
+	dbg1 ("server_receiveConnectionless: Connectionless sink: %dx%d(max) bytes in\n",
 	       numRequests, maxRequestSize);
 
 	setServerAddr (&addr);
@@ -191,7 +191,7 @@ void server_test_messageLimits(void)
 	for (msize = 1; msize <= 66000;) {
 		server_receiveConnectionless(SOCK_RDM, 1, msize);  /* if first param set to 10 out of mem */
 
-		debug("message size = %d\n",msize);
+		dbg1("message size = %d\n",msize);
 		if (((msize + TS_MSGINC)>66000) && (msize != 66000)) {
 			msize = 66000;
 		} else
@@ -221,7 +221,7 @@ void server_receiveConnection
 	struct sockaddr_tipc addr;  /* address for socket */
 	int i;			    /* loop variable */
 
-	debug ("server_receiveConnection: Connection echo: %d conns, %dx%d(max) bytes in, %dx%d bytes out\n",
+	dbg1 ("server_receiveConnection: Connection echo: %d conns, %dx%d(max) bytes in, %dx%d bytes out\n",
 	       numConns, numRequests, maxRequestSize, numReplies, replySize);
 
 	setServerAddr (&addr);
@@ -276,7 +276,7 @@ void server_receiveConnectionShutdown
 	struct sockaddr_tipc addr;  /* address to use */
 	int i;			    /* loop counter */
 
-	debug ("server_receiveConnectionShutdown: Connection echo: %d conns, %dx%d(max) bytes in\n",
+	dbg1 ("server_receiveConnectionShutdown: Connection echo: %d conns, %dx%d(max) bytes in\n",
 	       numConns, numRequests, maxRequestSize);
 
 	setServerAddr (&addr);
@@ -290,7 +290,7 @@ void server_receiveConnectionShutdown
 		sockfd_A = acceptSocketTIPC (sockfd_L);
 		recvSocketTIPC (sockfd_A, numRequests, maxRequestSize, 0, 0);
 		if (recv (sockfd_A, (char *)&i, 1, MSG_WAITALL) != 0)
-			failTest("failed to detect disconnect by client");
+			err("failed to detect disconnect by client");
 		closeSocketTIPC (sockfd_A);
 	}
 	closeSocketTIPC (sockfd_L);
@@ -397,7 +397,7 @@ void server_test_anc_connection(void)
 	sos = acceptSocketTIPC(sol);
 
 	if (0 > recvmsg (sos, &ctrlbuf, 0))
-		failTest ("FAILED (server) bad recvmsg return code");
+		err ("FAILED (server) bad recvmsg return code");
 
 
 
@@ -405,13 +405,13 @@ void server_test_anc_connection(void)
 	anc = CMSG_FIRSTHDR(&ctrlbuf);
 
 	if (anc == NULL)
-		failTest ("FAILED (server) anc is NULL");
+		err ("FAILED (server) anc is NULL");
 
 	if (TIPC_DESTNAME != anc->cmsg_type) {
 		anc_data_type(str, anc->cmsg_type);
 		sprintf (failStr,"bad anc data type = %d = %s",
 		         anc->cmsg_type, str);
-		failTest (failStr);
+		err (failStr);
 	}
 
 	anc_data[0] = *((unsigned int*)(CMSG_DATA(anc) + 0));
@@ -420,24 +420,24 @@ void server_test_anc_connection(void)
 
 	if (TS_TEST_TYPE != anc_data[0]) {
 		sprintf (failStr,"FAILED (server) wrong name %d \n", anc_data[0]);
-		failTest (failStr);
+		err (failStr);
 	}
 	if (TS_TEST_INST != anc_data[1]) {
 		sprintf (failStr,"FAILED (server) wrong instance %x\n", anc_data[1]);
-		failTest (failStr);
+		err (failStr);
 	}
 	if (TS_TEST_INST != anc_data[2]) {
 		sprintf (failStr,"FAILED (server) wrong instance %x\n", anc_data[2]);
-		failTest (failStr);
+		err (failStr);
 	}
 
-	debug ("server_test_anc : anc data : %x %x %x\n"
+	dbg1 ("server_test_anc : anc data : %x %x %x\n"
 	       ,(*(unsigned int*)(CMSG_DATA(anc) + 0))
 	       ,(*(unsigned int*)(CMSG_DATA(anc) + 4))
 	       ,(*(unsigned int*)(CMSG_DATA(anc) + 8))
 	      );
 
-	debug ("server_test_anc : msg with name used: '%s'\n" ,buf);
+	dbg1 ("server_test_anc : msg with name used: '%s'\n" ,buf);
 
 
 	/* exchange a couple of messages for the fun of it */
@@ -445,13 +445,13 @@ void server_test_anc_connection(void)
 		sendSocketBuffTIPC(sos, "ONE", 1, 4, 0);
 
 		if (0 > recv (sos ,buf ,TS_ANCBUFSZ ,0))
-			failTest ("server_test_anc: (recv)");
+			err ("server_test_anc: (recv)");
 
 
-		debug ("server_test_anc : received '%s'\n" ,buf);
+		dbg1 ("server_test_anc : received '%s'\n" ,buf);
 	}
 
-	debug ("server_test_anc : closing socket: \n"
+	dbg1 ("server_test_anc : closing socket: \n"
 	       "peer will get errcode through anc data\n");
 
 	sendSocketBuffTIPC (sos, "OMEGA", 1, 6, 0); /* 'OMEGA' message will cause client to quit its loop */
@@ -517,20 +517,20 @@ void server_test_anc_connectionless(void)
 
 	ctrlbuf.msg_controllen = CMSG_SPACE(12);
 	if (0 > recvmsg (sos, &ctrlbuf, 0)) {
-		failTest ("recvmsg");
+		err ("recvmsg");
 
 	}
 
 	anc = CMSG_FIRSTHDR(&ctrlbuf);
 
 	if (anc == NULL)
-		failTest ("FAILED (server) anc is NULL");
+		err ("FAILED (server) anc is NULL");
 
 	if (TIPC_DESTNAME != anc->cmsg_type) {
 		anc_data_type(str, anc->cmsg_type);
 		sprintf (failStr,"bad anc data type = %d = %s",
 		         anc->cmsg_type, str);
-		failTest (failStr);
+		err (failStr);
 	}
 
 
@@ -540,17 +540,17 @@ void server_test_anc_connectionless(void)
 
 	if (TS_TEST_TYPE != anc_data[0]) {
 		sprintf (failStr,"wrong name %x ",anc_data[2]);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	if (TS_TEST_INST != anc_data[1]) {
 		sprintf (failStr,"wrong instance %x",anc_data[1]);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	if (TS_TEST_INST != anc_data[2]) {
 		sprintf (failStr,"wrong instance %x",anc_data[2]);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	sleep (1);				/* may be able to replace the sleep with another sync message */
@@ -577,16 +577,102 @@ void server_bindMulticast
 	                 TS_TEST_TYPE, lower, upper);
 	server_addr.scope = TS_SCOPE;
 	bindSocketTIPC(sd, &server_addr);
-	tipc_printaddr(&server_addr); /* prints the address if the verbose is set to debug (2) */
-	debug("Socket bind for multicast successful\n");
+	tipc_printaddr(&server_addr); /* prints the address if the verbose is set to dbg1 (2) */
+	dbg1("Socket bind for multicast successful\n");
 }
 
-#define TIPC_MCAST_SUBTESTS 4				 /* number of subtests to run */
+#define TIPC_MCAST_SUBTESTS 7				 /* number of subtests to run */
 #define TIPC_MCAST_SOCKETS  5				 /* number of sockets to service */
-
+static char *rcvbuf = NULL;
 /**
  * server_mcast -
  */
+#if 0
+void server_mcast
+(
+        int *sd,		 /* array of sockets */
+        fd_set *readfds,	 /* file descriptor for all the sockets */
+        int numSubTest				 /* subtest currently being run */
+)
+{
+	static int expected[/*TIPC_MCAST_SUBTESTS*/7][TIPC_MCAST_SOCKETS] = {
+		{1,1,1,0,0},
+		{0,0,1,1,0},
+		{0,0,0,1,1},
+		{1,1,1,1,1},
+		{0,0,0,1,1},
+		{0,0,0,1,1},
+		{0,0,0,1,1}
+	};
+	int expected_burst[7/*TIPC_MCAST_SUBTESTS*/] = {1, 1 , 1, 1, 200, 200, 40};
+	int expected_szs[7/*TIPC_MCAST_SUBTESTS*/] = {100, 100 , 100, 100, 100, 1000, 1000};
+	int used_sks[7/*TIPC_MCAST_SUBTESTS*/] = {3, 2 , 2, 5, 2, 2, 2};
+	int st = numSubTest + 1;
+	fd_set fds;
+	struct timeval timeout;	/* timeout structure for select */
+	int num_ready;
+	int i;	
+	int rc = -1;				 /* loop variable */
+	int gotMsg;
+	int msgno;
+	char *buf;
+
+	if (!rcvbuf) 
+		rcvbuf = malloc(66000);
+	buf = rcvbuf;
+	recvSyncTIPC (TS_SYNC_ID_3);	/* wait for client to finish sending messages */
+
+	fds = *readfds;
+	timeout.tv_sec  = 0;
+	timeout.tv_usec = 0;
+	num_ready = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
+
+	dbg1("===>Starting SubTest %d\n", st);
+
+	if (num_ready < 0)
+		err("select() returned error");
+
+	/* Handle special case of inter-cluster multicasting */
+
+	if (!client_in_same_cluster) {
+		if (num_ready > 0)
+			err("unexpected multicast messages received");
+		else
+			goto exit;
+	}
+	/* Handle normal case of intra-cluster multicasting */
+	for (msgno = 0; msgno < expected_burst[numSubTest]; msgno++) {
+		for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
+
+			gotMsg = !!FD_ISSET(sd[i], &fds);
+			if (gotMsg != expected[numSubTest][i]) {
+				dbg2("multicast subtest %d index %d expected %d got %d\n",
+				       numSubTest, i, expected[numSubTest][i], gotMsg);
+				err("unexpected multicast result");
+			}
+			if (gotMsg) {
+				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], MSG_DONTWAIT,
+					      NULL, NULL);
+				if (rc < 0)
+					err("multicast message not received");
+				if (rc != expected_szs[numSubTest])
+					err("multicast message wrong size");					
+			}
+			if (numSubTest < 4) {			
+				if (recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
+					     NULL, NULL) >= 0) {
+					err("second multicast message received");
+				}
+			}
+		}
+		dbg2("    Received msg #%u\n", msgno);
+	}
+
+exit:
+	dbg1 ("==>Finished SubTest %d: received %u msgs of sz %i\n", st, msgno, rc);
+	sendSyncTIPC (TS_SYNC_ID_4);	/* tell client to continue */
+}
+#endif
 
 void server_mcast
 (
@@ -595,20 +681,31 @@ void server_mcast
         int numSubTest				 /* subtest currently being run */
 )
 {
-	static int expected[TIPC_MCAST_SUBTESTS][TIPC_MCAST_SOCKETS] = {
+	static int expected[/*TIPC_MCAST_SUBTESTS*/7][TIPC_MCAST_SOCKETS] = {
 		{1,1,1,0,0},
 		{0,0,1,1,0},
 		{0,0,0,1,1},
-		{1,1,1,1,1}
+		{1,1,1,1,1},
+		{0,0,0,1,1},
+		{0,0,0,1,1},
+		{0,0,0,1,1}
 	};
-
+	int expected_burst[7/*TIPC_MCAST_SUBTESTS*/] = {1, 1 , 1, 1, 200, 200, 40};
+	int expected_szs[7/*TIPC_MCAST_SUBTESTS*/] = {100, 100 , 100, 100, 100, 1000, 66000};
+	int used_sks[7/*TIPC_MCAST_SUBTESTS*/] = {3, 2 , 2, 5, 2, 2, 2};
+	int st = numSubTest + 1;
 	fd_set fds;
 	struct timeval timeout;	/* timeout structure for select */
 	int num_ready;
-	int i;					 /* loop variable */
+	int i;	
+	int rc = -1;				 /* loop variable */
 	int gotMsg;
-	char buf[100];				/* buffer to receive into */
+	int msgno = 0, msgcnt = 0;
+	char *buf;
 
+	if (!rcvbuf) 
+		rcvbuf = malloc(66000);
+	buf = rcvbuf;
 	recvSyncTIPC (TS_SYNC_ID_3);	/* wait for client to finish sending messages */
 
 	fds = *readfds;
@@ -616,41 +713,55 @@ void server_mcast
 	timeout.tv_usec = 0;
 	num_ready = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
 
+	dbg1("===>Starting SubTest %d\n", st);
+
 	if (num_ready < 0)
-		failTest("select() returned error");
+		err("select() returned error");
 
 	/* Handle special case of inter-cluster multicasting */
 
 	if (!client_in_same_cluster) {
 		if (num_ready > 0)
-			failTest("unexpected multicast messages received");
+			err("unexpected multicast messages received");
 		else
 			goto exit;
 	}
-
 	/* Handle normal case of intra-cluster multicasting */
+	for (msgno = 0; msgno < expected_burst[numSubTest]; msgno++) {
+		for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
 
-	for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
-		gotMsg = !!FD_ISSET(sd[i], &fds);
-
-		if (gotMsg != expected[numSubTest][i]) {
-			printf("multicast subtest %d index %d expected %d got %d\n",numSubTest, i, expected[numSubTest][i], gotMsg);
-			failTest("unexpected multicast result");
+			gotMsg = !!FD_ISSET(sd[i], &fds);
+			if (gotMsg != expected[numSubTest][i]) {
+				dbg2("multicast subtest %d index %d expected %d got %d\n",
+				       numSubTest, i, expected[numSubTest][i], gotMsg);
+				err("unexpected multicast result");
+			}
+			if (gotMsg) {
+				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], MSG_DONTWAIT,
+					      NULL, NULL);
+				if (rc < 0)
+					err("multicast message not received");
+				if (rc != expected_szs[numSubTest])
+					err("multicast message wrong size");
+				if (checkArray(buf, rc))
+					err("received multicast msg corrupted\n");
+				msgcnt++;
+			}
+			if (numSubTest < 4) {			
+				if (recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
+					     NULL, NULL) >= 0) {
+					err("second multicast message received");
+				}
+			}
 		}
-
-		if (gotMsg && recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
-		                       NULL, NULL) < 0) {
-			failTest("multicast message not received");
-		}
-
-		if (recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
-		                NULL, NULL) >= 0) {
-			failTest("second multicast message received");
-		}
+		dbg2("    Received msg #%u\n", msgno);
 	}
 
 exit:
-	debug ("Just finished SubTest %d\n", numSubTest + 1);
+	dbg1("===>Finished SubTest %d: received %u msgs of sz %i at %u sockets (%u per socket)\n",
+	      st, msgcnt, rc, used_sks[numSubTest], msgno);
+	if (msgcnt != msgno * used_sks[numSubTest])
+		err("Received wrong number of multicast messages\n");
 	sendSyncTIPC (TS_SYNC_ID_4);	/* tell client to continue */
 }
 
@@ -748,11 +859,11 @@ void server_test_stream(void)
 
 		msg_size = recv(peer_sd, inbuf, 4, MSG_WAITALL);
 		if (msg_size == 0) {
-			debug("Server: client terminated normally\n");
+			dbg1("Server: client terminated normally\n");
 			break;
 		}
 		if (msg_size < 0) {
-			failTest("Server: client terminated abnormally\n");
+			err("Server: client terminated abnormally\n");
 		}
 
 		rec_num++;
@@ -760,7 +871,7 @@ void server_test_stream(void)
 		rec_size = *(__u32 *)inbuf;
 		rec_size = ntohl(rec_size);
 
-		debug("Server: receiving record %d of %u bytes\n",
+		dbg1("Server: receiving record %d of %u bytes\n",
 		      rec_num, rec_size);
 
 		msg_size = recv(peer_sd, inbuf, rec_size, MSG_WAITALL);
@@ -768,21 +879,21 @@ void server_test_stream(void)
 		if (msg_size != rec_size) {
 			sprintf(failMsg,"Server: receive error, got %d bytes\n",
 			        msg_size);
-			failTest(failMsg);
+			err(failMsg);
 		}
 		while (msg_size > 0) {
 			if ((unsigned char)inbuf[--msg_size] != rec_size) {
-				failTest("Server: record content error\n");
+				err("Server: record content error\n");
 			}
 		}
-		debug("Server: record %d received\n", rec_num);
+		dbg1("Server: record %d received\n", rec_num);
 
 		/* Send 1 byte acknowledgement (value is irrelevant) */
 
 		if (0 >= send(peer_sd, &outbuf, 1, 0)) {
-			failTest("Server: failed to send response\n");
+			err("Server: failed to send response\n");
 		}
-		debug("Server: record %d acknowledged\n", rec_num);
+		dbg1("Server: record %d acknowledged\n", rec_num);
 	}
 
 	closeSocketTIPC(peer_sd);
@@ -816,19 +927,19 @@ int do_receive
 
 	do {
 		chunk_size = recv(peer_sd, inbuf, buf_size, recvFlag);
-		debug("recv gave us %d\n", chunk_size);
+		dbg1("recv gave us %d\n", chunk_size);
 
 		if (chunk_size == 0) {
-			debug("Server: client terminated normally\n");
+			dbg1("Server: client terminated normally\n");
 			return -numRec;
 		}
 
 		if ((chunk_size < 0) || (chunk_size > buf_size))
-			failTest("recv failed ");
+			err("recv failed ");
 
 		if ((inbuf[0] != TS_BBUF_DATA) ||
 		                (inbuf[chunk_size-1] != TS_BBUF_DATA))
-			failTest("recv corruption ");
+			err("recv corruption ");
 
 		buf_size -= chunk_size;
 		numRec++;
@@ -865,7 +976,7 @@ void server_test_bigStream(void)
 	info("Subtest 1 with the MSG_WAITALL flag not set, number received = %d\n", numRec);
 	if (numRec <= 0) {
 		sprintf(failStr, "SubTest 1 returned %d", numRec);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	sendSyncTIPC(TS_SYNC_ID_2);  /* tell client to send 2nd stream */
@@ -874,7 +985,7 @@ void server_test_bigStream(void)
 	info("Subtest 2 with the MSG_WAITALL flag set, number received = %d\n", numRec);
 	if (numRec != 1) {
 		sprintf(failStr, "SubTest 2 returned %d", numRec);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	recvSyncTIPC(TS_SYNC_ID_3);  /* ensure client has closed connection */
@@ -883,7 +994,7 @@ void server_test_bigStream(void)
 	info("Subtest 3 with the MSG_WAITALL flag set, number received = %d\n", numRec);
 	if (numRec != 0) {
 		sprintf(failStr, "SubTest 3 returned %d", numRec);
-		failTest(failStr);
+		err(failStr);
 	}
 	closeSocketTIPC(peer_sd);
 
@@ -1079,7 +1190,7 @@ void tipcTestServer(void)
 	__u32 domain;
 	__u32 client_domain;
 
-	debug("Starting Server\n");
+	dbg1("Starting Server\n");
 
 	setServerAddr (&addr);
 	msgSize = sizeof(test);
@@ -1100,7 +1211,7 @@ void tipcTestServer(void)
 			test = TS_INVALID_TEST;
 
 		if (getsockname (sockfd_S, (struct sockaddr *) &self, &selfLen) != 0)
-			failTest ("getsockname() error");
+			err("getsockname() error");
 		domain = self.addr.id.node;
 		client_domain= from.addr.id.node;
 		client_in_same_cluster =

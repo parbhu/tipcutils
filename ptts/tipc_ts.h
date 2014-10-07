@@ -83,8 +83,11 @@ static inline void killme(int exit_code);
 #define TS_BBUF_DATA 0x1A    /* data pattern used in big stream test */
 
 
-#define debug(arg...) do {if (verbose == 2) printf(arg);} while (verbose < 0)
+
 #define info(arg...) do {if (verbose >= 1) printf(arg);} while (verbose < 0)
+#define dbg1(arg...) do {if (verbose >= 2) printf(arg);} while (verbose < 0)
+#define dbg2(arg...) do {if (verbose >= 3) printf(arg);} while (verbose < 0)
+#define err(arg...) do {failTest(arg);} while (0)
 
 #ifndef VOIDFUNCPTR
 typedef void	(*VOIDFUNCPTR) ();	/* pfunction returning void */

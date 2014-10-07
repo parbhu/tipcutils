@@ -132,11 +132,11 @@ void makeArray
 	/* Validate arguments */
 
 	if ((start < 0) || (start > 255) || (start > end)) {
-		debug ("Using default data start (0)\n");
+		dbg1 ("Using default data start (0)\n");
 		start = 0;
 	}
 	if ((end < 0) || (end > 255)) {
-		debug ("Using default data end (255)\n");
+		dbg1 ("Using default data end (255)\n");
 		end = 255;
 	}
 
@@ -205,7 +205,7 @@ int checkArray
 				errCount++;
 		}
 		if (errCount > 0)
-			debug ("Not a valid %d byte message\n", arraySize);
+			dbg1 ("Not a valid %d byte message\n", arraySize);
 		return errCount;
 	}
 
@@ -218,8 +218,8 @@ int checkArray
 	if ((errCheck ^ theArray[6]) & 0xFF) {
 		printf ("Header checksum error\n");
 		for (i = 0; i <= 6; i++)
-			debug ("Header[%d]=0x%0x\n", i, theArray[i]);
-		debug ("Computed checksum=0x%0x\n", errCheck);
+			dbg1 ("Header[%d]=0x%0x\n", i, theArray[i]);
+		dbg1 ("Computed checksum=0x%0x\n", errCheck);
 		return 1;
 	}
 
@@ -245,7 +245,7 @@ int checkArray
 	for (i = 7; i < theSize; i++) {
 		if (curNum != (unsigned char)theArray[i]) {
 			if (++errCount == 1)
-				debug ("First data mismatch at offset %d\n", i);
+				dbg1 ("First data mismatch at offset %d\n", i);
 		}
 		curNum++;
 		if (curNum > end)
@@ -271,7 +271,7 @@ int acceptSocketTIPC
 	addrlen = sizeof (addr);
 	sockfd_N = accept (sockfd_L, (struct sockaddr *)&addr, &addrlen);
 	if (sockfd_N < 0)
-		failTest ("accept() error");
+		err("accept() error");
 	return sockfd_N;
 }
 
@@ -285,7 +285,7 @@ void listenSocketTIPC
 )
 {
 	if (listen (sockfd_S, 5) <0)
-		failTest ("listen() error");
+		err("listen() error");
 }
 
 /**
@@ -319,7 +319,7 @@ void sendtoSocketBuffTIPC
 
 		res = sendto (sockfd, msgArea, msgSize, 0,
 		              (struct sockaddr *)addr, sizeof (*addr));
-		debug("sent a message %d\n",i);
+		dbg1("sent a message %d\n",i);
 
 		if (res != msgSize)
 			sendErrorCount++;
@@ -329,7 +329,7 @@ void sendtoSocketBuffTIPC
 
 	if ((sendErrorTarget >= 0) && (sendErrorCount != sendErrorTarget)) {
 		sprintf(failStr,"sendto() errors %d expected %d Message Size = %d",sendErrorCount, sendErrorTarget,msgSize);
-		failTest (failStr);
+		err(failStr);
 	}
 
 
@@ -358,7 +358,7 @@ void sendtoSocketTIPC
 
 	msgArea = (char *)malloc (msgSize);
 	if (msgArea == NULL)
-		failTest ("unable to allocate send buffer");
+		err("unable to allocate send buffer");
 
 	makeArray (msgArea, msgSize, 0, 255);
 	sendtoSocketBuffTIPC (sockfd, addr, msgArea, numTimes, msgSize,
@@ -408,7 +408,7 @@ void setOption
 	if (setsockopt (sockfd, SOL_TIPC, opt,
 	                (char*)&value, sizeof (value))) {
 		sprintf(failString,"unable to set option %d to %d", opt, value);
-		failTest (failString);
+		err(failString);
 	}
 }
 
@@ -430,7 +430,7 @@ void getOption
 
 	if (getsockopt (sockfd, SOL_TIPC, opt, (char*)value, &size)) {
 		sprintf(failString,"unable to get option %d", opt);
-		failTest (failString);
+		err(failString);
 	}
 }
 
@@ -446,24 +446,24 @@ void tipc_printaddr
         struct sockaddr_tipc *addr     /* pointer to TIPC address structure */
 )
 {
-	debug ("%s:",
+	dbg1 ("%s:",
 	       (addr->family == AF_TIPC) ? "AF_TIPC" : "invalid family");
 	switch (addr->addrtype) {
 	case TIPC_ADDR_ID:
-		debug ("ID=<%d.%d.%d>,%d",
+		dbg1 ("ID=<%d.%d.%d>,%d",
 		       tipc_zone (addr->addr.id.node),
 		       tipc_cluster (addr->addr.id.node),
 		       tipc_node (addr->addr.id.node),
 		       addr->addr.id.ref);
 		break;
 	case TIPC_ADDR_NAME:
-		debug ("NAME=(%d,%d),%d",
+		dbg1 ("NAME=(%d,%d),%d",
 		       addr->addr.name.name.type, addr->addr.name.name.instance,
 		       addr->addr.name.domain);
 		break;
 	case TIPC_ADDR_NAMESEQ:
 		/* case TIPC_ADDR_MCAST:  same value as TIPC_ADDR_NAMESEQ */
-		debug ("NAMESEQ=(%d,%d,%d)",
+		dbg1 ("NAMESEQ=(%d,%d,%d)",
 		       addr->addr.nameseq.type, addr->addr.nameseq.lower,
 		       addr->addr.nameseq.upper);
 		break;
@@ -530,7 +530,7 @@ void setServerAddrTo
 		addr->addr.id.ref = info2;
 		break;
 	default:
-		failTest ("Invalid address type used in test");
+		err("Invalid address type used in test");
 		break;
 	}
 }
@@ -548,7 +548,7 @@ int createSocketTIPC
 
 	sockfd_N = socket (AF_TIPC, type, 0);
 	if (sockfd_N < 0)
-		failTest ("socket() error");
+		err("socket() error");
 
 	return sockfd_N;
 }
@@ -565,7 +565,7 @@ void bindSocketTIPC
 {
 	if (bind (sockfd_S, (struct sockaddr *)addr, sizeof (*addr)) < 0) {
 		tipc_printaddr(addr);
-		failTest ("bind() error");
+		err("bind() error");
 	}
 
 }
@@ -587,7 +587,7 @@ LOCALS int acceptPeerSocketTIPC
 
 	sockfd_N = accept (sockfd_L, (struct sockaddr *)peerAddr, peerAddrLen);
 	if (sockfd_N < 0)
-		failTest ("accept() error");
+		err("accept() error");
 	return sockfd_N;
 }
 #endif
@@ -604,7 +604,7 @@ void connectSocketTIPC
 {
 	if (connect (sockfd_C, (struct sockaddr *)addr, sizeof (*addr)) < 0) {
 		tipc_printaddr(addr);
-		failTest ("connect() error");
+		err("connect() error");
 	}
 
 }
@@ -619,7 +619,7 @@ void closeSocketTIPC
 )
 {
 	if (close (sockfd_C) < 0)
-		failTest ("close() error");
+		err("close() error");
 }
 
 /**
@@ -649,17 +649,17 @@ void sendSocketBuffTIPC
 
 	for (i = 0; i < numTimes; i++) {
 		res = send (sockfd, msgArea, msgSize, 0);
-		debug("sent a message %d \n",i);
+		dbg1("sent a message %d \n",i);
 
 		if (res != msgSize) {
 			sendErrorCount++;
-			debug("res = %d msgSize = %d\n",res, msgSize);
+			dbg1("res = %d msgSize = %d\n",res, msgSize);
 		}
 
 
 		if ((sendErrorTarget >= 0) && (sendErrorCount != sendErrorTarget)) {
-			debug("sendErrorCount = %d sendErrorTarget = %d\n",sendErrorCount, sendErrorTarget);
-			failTest ("unexpected number of send() errors");
+			dbg1("sendErrorCount = %d sendErrorTarget = %d\n",sendErrorCount, sendErrorTarget);
+			err("unexpected number of send() errors");
 		}
 	}
 }
@@ -686,7 +686,7 @@ void sendSocketTIPC
 
 	msgArea = (char*)malloc (msgSize);
 	if (msgArea == NULL)
-		failTest ("unable to allocate send buffer");
+		err("unable to allocate send buffer");
 
 	makeArray (msgArea, msgSize, 0, 255);
 	sendSocketBuffTIPC (sockfd, msgArea, numTimes, msgSize, sendErrorTarget);
@@ -730,20 +730,20 @@ void recvSocketTIPC
 	msgArea = (char*)malloc (maxSize);	/* currently only call free for the success path */
 	/* failure path results in application being killed */
 	if (msgArea == NULL)
-		failTest ("unable to allocate receive buffer");
+		err("unable to allocate receive buffer");
 
 	recvErrorCount = 0;
 	checkErrorCount = 0;
 
 	while ((numTimes < 0) || (numTimes-- != 0)) {
 		res = recv (sockfd, msgArea, maxSize, MSG_WAITALL);
-		debug("got a message %d\n",numTimes);
+		dbg2("got a message %d\n",numTimes);
 
 		if (res == 0) {
 			if (numTimes < 0)
 				break;
 			else if (numTimes >= 0)
-				failTest ("recv() returned unexpected disconnect");
+				err("recv() returned unexpected disconnect");
 		}
 		if (res < 0) {
 			recvErrorCount++;
@@ -754,9 +754,9 @@ void recvSocketTIPC
 	}
 
 	if ((recvErrorTarget >= 0) && (recvErrorCount != recvErrorTarget))
-		failTest ("unexpected number of recv() errors");
+		err("unexpected number of recv() errors");
 	if ((checkErrorTarget >= 0) && (checkErrorCount != checkErrorTarget))
-		failTest ("unexpected number of corrupted messages received");
+		err("unexpected number of corrupted messages received");
 
 	free (msgArea);
 }
@@ -773,15 +773,15 @@ void sendSyncTIPC
 	int sockfd_R;               /* socket used for signal acknowledement */
 	struct sockaddr_tipc addr;  /* address to use */
 
-	debug ("sending synchronization signal %d\n", sigInstance);
+	dbg1 ("sending synchronization signal %d\n", sigInstance);
 	setServerAddrTo (&addr, TIPC_ADDR_NAME, TS_SYNCRO_TYPE, sigInstance, 0);
 	sockfd_R = createSocketTIPC (SOCK_RDM);
 	bindSocketTIPC (sockfd_R, &addr);
-	debug ("sent synchronization signal %d\n", sigInstance);
+	dbg1 ("sent synchronization signal %d\n", sigInstance);
 	if (recv (sockfd_R, (char *)&addr, 1, 0) != 1)
-		failTest ("synchronization signal not acknowledged");
+		err("synchronization signal not acknowledged");
 	closeSocketTIPC (sockfd_R);
-	debug ("got ack for synchronization signal %d \n", sigInstance);
+	dbg1 ("got ack for synchronization signal %d \n", sigInstance);
 }
 
 /**
@@ -801,7 +801,7 @@ void recvSyncTIPC
 
 	/* Wait for occurrence of synchronization signal */
 
-	debug ("detecting synchronization signal %d\n", sigInstance);
+	dbg1 ("detecting synchronization signal %d\n", sigInstance);
 
 	sockfd_S = createSocketTIPC (SOCK_SEQPACKET);
 
@@ -815,15 +815,15 @@ void recvSyncTIPC
 	subscr.filter = htonl(TIPC_SUB_SERVICE);
 
 	if (send(sockfd_S, (char *)&subscr, sizeof(subscr), 0) != sizeof(subscr))
-		failTest ("Failed to send subscription");
+		err("Failed to send subscription");
 	if (recv(sockfd_S, (char *)&event, sizeof(event), 0) != sizeof(event))
-		failTest ("Failed to receive event");
+		err("Failed to receive event");
 	if (event.event != htonl(TIPC_PUBLISHED))
-		failTest ("Signal %d not detected\n");
+		err("Signal %d not detected\n");
 
 	/* Acknowledge receipt of synchronization signal */
 
-	debug ("acknowledging synchronization signal %d\n", sigInstance);
+	dbg1 ("acknowledging synchronization signal %d\n", sigInstance);
 
 	sockfd_R = createSocketTIPC (SOCK_RDM);
 
@@ -833,22 +833,22 @@ void recvSyncTIPC
 	setServerAddrTo (&addr, TIPC_ADDR_NAME, TS_SYNCRO_TYPE, sigInstance, 0);
 	if (sendto (sockfd_R, (caddr_t)&subscr, 1, 0,
 	                (struct sockaddr *)&addr, sizeof (addr)) != 1)
-		failTest ("can't acknowledge synchronization signal");
+		err("can't acknowledge synchronization signal");
 
 	closeSocketTIPC (sockfd_R);
 
 	/* Wait for synchronization signal to end (to prevent redetection) */
 
-	debug ("detecting end of synchronization signal %d\n", sigInstance);
+	dbg1 ("detecting end of synchronization signal %d\n", sigInstance);
 
 	if (recv(sockfd_S, (char *)&event, sizeof(event), 0) != sizeof(event))
-		failTest ("Failed to receive event");
+		err("Failed to receive event");
 	if (event.event != htonl(TIPC_WITHDRAWN))
-		failTest ("Signal %d not detected\n");
+		err("Signal %d not detected\n");
 
 	closeSocketTIPC (sockfd_S);
 
-	debug ("end of synchronization signal %d\n", sigInstance);
+	dbg1 ("end of synchronization signal %d\n", sigInstance);
 }
 
 /**
@@ -879,11 +879,11 @@ void getServerAddr
 	subscr.filter = htonl(TIPC_SUB_SERVICE);
 
 	if (send(sockfd_X, (char *)&subscr, sizeof(subscr), 0) != sizeof(subscr))
-		failTest ("Failed to send subscription");
+		err("Failed to send subscription");
 	if (recv(sockfd_X, (char *)&event, sizeof(event), 0) != sizeof(event))
-		failTest ("Failed to receive event");
+		err("Failed to receive event");
 	if (event.event != htonl(TIPC_PUBLISHED))
-		failTest ("Signal %d not detected\n");
+		err("Signal %d not detected\n");
 
 	closeSocketTIPC (sockfd_X);
 
@@ -951,7 +951,7 @@ void common_test_socketOptions(void)
 	for (ii = 0 ; ii < MIN_SOCK_INDEX ; ii++) {
 		printf ("Bypassing all tests for %s\n" ,typeString (ii ,buf));
 	}
-	debug ("Testing default values... \n");
+	dbg1 ("Testing default values... \n");
 
 	for (ii = MIN_SOCK_INDEX ; ii <= MAX_SOCK_INDEX ; ii++) {
 
@@ -961,7 +961,7 @@ void common_test_socketOptions(void)
 			sprintf(failString,"FAILED : wrong default TIPC_IMPORTANCE "
 			        "for socket type %s (%d)"
 			        ,typeString (ii, buf) ,n_opt);
-			failTest(failString);
+			err(failString);
 		}
 	}
 	info("TIPC_IMPORTANCE defaults ... PASSED\n");
@@ -972,7 +972,7 @@ void common_test_socketOptions(void)
 			sprintf (failString,"FAILED : wrong default SRC_DROPPABLE "
 			         "for socket type %s (%d)"
 			         ,typeString (ii ,buf) ,n_opt);
-			failTest (failString);
+			err(failString);
 		}
 	}
 	info("TIPC_SRC_DROPPABLE defaults ... PASSED\n");
@@ -984,7 +984,7 @@ void common_test_socketOptions(void)
 			sprintf (failString,"FAILED : wrong default DEST_DROPPABLE "
 			         "for socket type %s (%d)"
 			         ,typeString (ii, buf) ,n_opt);
-			failTest (failString);
+			err(failString);
 		}
 	}
 	info("TIPC_DEST_DROPPABLE defaults ... PASSED\n");
@@ -997,14 +997,14 @@ void common_test_socketOptions(void)
 			sprintf (failString,"FAILED : wrong default TIPC_CONN_TIMEOUT "
 			         "for socket type %s (%d)"
 			         ,typeString (ii, buf) ,n_opt);
-			failTest (failString);
+			err(failString);
 		}
 	}
 	info("TIPC_CONN_TIMEOUT defaults ... PASSED\n");
 
 	/* only do the next test for the connection orientated sockets */
 
-	debug ("Testing setting of values then fetching them back... \n");
+	dbg1 ("Testing setting of values then fetching them back... \n");
 
 	for (ii = MIN_SOCK_INDEX ; ii <= MAX_SOCK_INDEX ; ii++) {
 		for (jj = TIPC_LOW_IMPORTANCE ; jj < TIPC_CRITICAL_IMPORTANCE ; jj++) {
@@ -1015,7 +1015,7 @@ void common_test_socketOptions(void)
 				sprintf (failString,"FAILED : wrong TIPC_IMPORTANCE "
 				         "for socket type %s (expected %d, got %d)"
 				         ,typeString (ii,buf) ,jj ,n_opt);
-				failTest (failString);
+				err(failString);
 			}
 		}
 	}
@@ -1031,7 +1031,7 @@ void common_test_socketOptions(void)
 					sprintf (failString,"FAILED : wrong TIPC_SRC_DROPPABLE "
 					         "for socket type %s (expected %d, got %d)"
 					         ,typeString (ii,buf) ,jj ,n_opt);
-					failTest (failString);
+					err(failString);
 				}
 			}
 		}
@@ -1047,7 +1047,7 @@ void common_test_socketOptions(void)
 				sprintf (failString,"FAILED : wrong TIPC_DEST_DROPPABLE "
 				         "for socket type %s (expected %d, got %d)"
 				         ,typeString (ii,buf) ,jj ,n_opt);
-				failTest (failString);
+				err(failString);
 			}
 		}
 	}
@@ -1061,7 +1061,7 @@ void common_test_socketOptions(void)
 			sprintf (failString,"FAILED : wrong TIPC_CONN_TIMEOUT "
 			         "for socket type %s (expected %d, got %d)"
 			         ,typeString (ii,buf) ,200 ,n_opt);
-			failTest (failString);
+			err(failString);
 		}
 	}
 	info("TIPC_CONN_TIMEOUT R/W ... PASSED\n");
@@ -1079,10 +1079,10 @@ void common_test_socketOptions(void)
 		if (0 == connect (so[ii] ,(struct sockaddr *)&saddr, sizeof (saddr))) {
 			sprintf(failString, "FAILED : connect didn't return error"
 			        " on %s" ,typeString (ii ,buf));
-			failTest(failString);
+			err(failString);
 		} else {
 			if (ETIMEDOUT != errno) {
-				failTest ("FAILED : didn't time out");
+				err("FAILED : didn't time out");
 			}
 		}
 
@@ -1130,11 +1130,11 @@ void common_test_recvfrom
 	if ((strlen(THE_STRING)+1) != size) {
 
 		sprintf (failStr,"common_test_recvfrom(): error receiving, size = %d\n", size);
-		failTest (failStr);
+		err(failStr);
 
 	} else if (strcmp((const char *)THE_STRING, (const char *)&buffer) != 0) {
 		sprintf (failStr,"common_test_recvfrom(): string mismatch got %s, wanted %s\n", buffer, THE_STRING);
-		failTest (failStr);
+		err(failStr);
 	}
 	closeSocketTIPC (so);
 }
@@ -1166,7 +1166,7 @@ void common_test_sendto
 
 	if ((strlen (THE_STRING) + 1) != size) {
 		sprintf (failStr,"common_test_sendto(): error sending, size = %d\n", size);
-		failTest (failStr);
+		err(failStr);
 	} else {
 		closeSocketTIPC (so);
 	}

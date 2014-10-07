@@ -86,7 +86,7 @@ int main(int argc, char* argv[], char* dummy[])
 
 	while (optind < argc) {
 		test = atoi(argv[optind]);
-		debug(" setting test = %d for optind = %d\n\n", test, optind);
+		dbg1(" setting test = %d for optind = %d\n\n", test, optind);
 
 		if (test < 0) {
 			tipcTestSuiteHelp();

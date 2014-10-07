@@ -56,7 +56,7 @@ void client_SendConnectionless
 	int sockfd_C;				 /* socket */
 	struct sockaddr_tipc addr;	 /* address of socket */
 
-	debug ("client_SendConnectionless: Connectionless source: %dx%d bytes out\n",
+	dbg1 ("client_SendConnectionless: Connectionless source: %dx%d bytes out\n",
 	       numRequests, msgSize);
 
 	recvSyncTIPC (TS_SYNC_ID_1);
@@ -223,7 +223,7 @@ void client_test_messageLimits(void)
 	for (msize = 1; msize <= 66000;) {
 		client_SendConnectionless(SOCK_RDM, 1, msize);
 
-		debug("message size = %d\n",msize);
+		dbg1("message size = %d\n",msize);
 
 		if (((msize + TS_MSGINC) > 66000) && (msize != 66000)) {
 			msize = 66000;	 /* if we are close to but not 66000 make it 66000 */
@@ -242,29 +242,40 @@ void client_mcast
 (
         int sd,			/* the socket to use */
         int lower,	/* the lower address range */
-        int upper	/* the upper address range */
+        int upper,	/* the upper address range */
+        int msgsize,
+	int burstsize,
+	int subtest
 )
 {
 	struct sockaddr_tipc server_addr;  /* address to be filled in */
-	char buf[100];			   /* buffer for the message */
+	char *buf = malloc(msgsize);			   /* buffer for the message */
 	int len;
+	int i;
 
+	dbg1("===> Starting multicast subtest #%u\n", subtest);
 	setServerAddrTo (&server_addr, TIPC_ADDR_MCAST, TS_TEST_TYPE, lower, upper);
-
-	sprintf(buf, "message to {%u,%u,%u}",
+/*
+	sprintf(buf, "%u messages of size %u to {%u,%u,%u}",
+		burstsize, msgsize,
 	        server_addr.addr.nameseq.type,
 	        server_addr.addr.nameseq.lower,
 	        server_addr.addr.nameseq.upper);
-	debug("Sending: %s\n", buf);
-
-	len = strlen (buf) + 1;
-	if (len != sendto(sd, buf, len, 0,
-	                  (struct sockaddr *)&server_addr, sizeof(struct sockaddr_tipc))) {
-		failTest("Client: Failed to send");
+	dbg2("    Sending: %s\n", buf);
+*/
+	makeArray(buf, msgsize, 0, msgsize);
+	len = msgsize;
+	for (i = 0; i < burstsize; i++) {
+		if (len != sendto(sd, buf, len, 0,
+				  (struct sockaddr *)&server_addr, sizeof(struct sockaddr_tipc))) {
+			err("Client: Failed to send");
+		}
 	}
-
+	dbg2("    Sent: %s\n", buf);
+	free(buf);
 	sendSyncTIPC (TS_SYNC_ID_3);	/* tell server to check for messages */
 	recvSyncTIPC (TS_SYNC_ID_4);	/* wait for server to complete check */
+	dbg1("===> Finished multicast subtest #%u\n", subtest);
 }
 
 /**
@@ -279,17 +290,19 @@ void client_test_multicast(void)
 {
 	int sd;	    /* socket to send with */
 
-	debug("client_test_multicast: \n");
+	dbg1("client_test_multicast: \n");
 
 	sd = createSocketTIPC (SOCK_RDM);
 
 	recvSyncTIPC (TS_SYNC_ID_1);		   /* wait for the server to be ready to receive */
 
-	client_mcast(sd,  99, 100);	 /* multicast to {x,  99, 100} */
-	client_mcast(sd, 150, 250);	 /* multicast to {x, 150, 250} */
-	client_mcast(sd, 200, 399);	 /* multicast to {x, 200, 399} */
-	client_mcast(sd,   0, 399);	 /* multicast to {x,   0, 399} */
-
+	client_mcast(sd,  99, 100, 100, 1, 1);	 /* multicast to {x,  99, 100} */
+	client_mcast(sd, 150, 250, 100, 1, 2);	 /* multicast to {x, 150, 250} */
+	client_mcast(sd, 200, 399, 100, 1, 3);	 /* multicast to {x, 200, 399} */
+	client_mcast(sd,   0, 399, 100, 1, 4);	 /* multicast to {x,   0, 399} */
+	client_mcast(sd, 200, 399, 100, 200, 5);	 /* multicast to {x,   200, 399} */
+	client_mcast(sd, 200, 399, 1000, 200, 6);	 /* multicast to {x,   200, 399} */
+	client_mcast(sd, 200, 399, 66000, 40, 7);	 /* multicast to {x,   200, 399} */
 	sendSyncTIPC (TS_SYNC_ID_2);
 }
 
@@ -309,7 +322,7 @@ void client_SendConnection
 	int sockfd_C;				/* socket to use */
 	struct sockaddr_tipc addr;  /* address for the socket */
 
-	debug ("client_SendConnection: Connection echo: %dx%d bytes out, %dx%d(max) bytes in\n",
+	dbg1 ("client_SendConnection: Connection echo: %dx%d bytes out, %dx%d(max) bytes in\n",
 	       numMessages, messageSize, numReplies, maxReplySize);
 
 
@@ -369,7 +382,7 @@ void client_SendConnectionShutdown
 	int sockfd_C;		   /* socket to use */
 	struct sockaddr_tipc addr; /* address for the socket */
 
-	debug ("client_SendConnectionShutdown: Connection echo: %dx%d bytes out\n",
+	dbg1 ("client_SendConnectionShutdown: Connection echo: %dx%d bytes out\n",
 	       numRequests, requestSize);
 
 
@@ -387,7 +400,7 @@ void client_SendConnectionShutdown
 
 	/* now shut down the socket */
 	if (shutdown(sockfd_C, SHUT_RDWR) != 0)	/* second parameter ignored*/
-		failTest ("unable to shutdown send buffer");
+		err ("unable to shutdown send buffer");
 
 	/* and do not forget to close the socket on this side */
 	closeSocketTIPC (sockfd_C);
@@ -486,7 +499,7 @@ void client_test_anc_connection(void)
 	iov[0].iov_base = buf;
 	iov[0].iov_len = TS_ANCBUFSZ;
 
-	debug("SEQPACKET (client)...");
+	dbg1("SEQPACKET (client)...");
 
 	recvSyncTIPC (TS_SYNC_ID_1);
 
@@ -503,13 +516,13 @@ void client_test_anc_connection(void)
 
 		sz = recvmsg(soc ,&ctrlbuf ,0);
 
-		debug("recvmsg returned %d \n",sz);
+		dbg1("recvmsg returned %d \n",sz);
 
 		if (sz <= 0) {
 			break;
 		}
 
-		debug ("anc : received '%s'\n", buf);
+		dbg1 ("anc : received '%s'\n", buf);
 
 		if (!strcmp (buf ,"ONE")) {
 
@@ -523,7 +536,7 @@ void client_test_anc_connection(void)
 				anc_data_type(str, anc->cmsg_type);
 				sprintf (failStr,"anc not null, anc data type = %d =%s",
 				         anc->cmsg_type, str);
-				failTest(failStr);
+				err(failStr);
 			}
 			strcpy (buf ,"TWO");
 		}
@@ -533,53 +546,53 @@ void client_test_anc_connection(void)
 	}
 
 	if (sz != 0)
-		failTest ("FAILED (client) wrong size");
+		err ("FAILED (client) wrong size");
 
 
 	anc = CMSG_FIRSTHDR(&ctrlbuf);
 
 	if (anc == NULL)
-		failTest ("FAILED (client) anc is NULL");
+		err ("FAILED (client) anc is NULL");
 
 	if (anc->cmsg_type != TIPC_ERRINFO) {
 		anc_data_type(str, anc->cmsg_type);
 		sprintf (failStr,"bad anc data type = %d = %s",
 		         anc->cmsg_type, str);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	anc_data[0] = *((unsigned int*)(CMSG_DATA(anc) + 0));
 	anc_data[1] = *((unsigned int*)(CMSG_DATA(anc) + 4));
 
-	debug ("got anc data\n");
-	debug ("anc_data[0] = %x\n",anc_data[0]);
-	debug ("anc_data[1] = %x\n",anc_data[1]);
+	dbg1 ("got anc data\n");
+	dbg1 ("anc_data[0] = %x\n",anc_data[0]);
+	dbg1 ("anc_data[1] = %x\n",anc_data[1]);
 
 
 	if (anc_data[1] != msgSize) {
 		sprintf (failStr,"bad return size %d expecting %d",anc_data[1], msgSize);
-		failTest(failStr);
+		err(failStr);
 	}
 
 
 	if (anc_data[0] != TIPC_ERR_NO_PORT) {
 		sprintf (failStr,"bad return code %d",anc_data[0]);
-		failTest(failStr);
+		err(failStr);
 	}
 
 	anc = CMSG_NXTHDR (&ctrlbuf ,anc);
 	if (anc == NULL) {
-		failTest ("no returned msg...?");
+		err ("no returned msg...?");
 
 	}
 	if (strcmp ((char*)CMSG_DATA(anc) ,"TWO")) {
-		failTest ("wrong returned message");
+		err ("wrong returned message");
 
 	}
-	debug ("returned msg: %s\n" ,(char*) CMSG_DATA (anc));
+	dbg1 ("returned msg: %s\n" ,(char*) CMSG_DATA (anc));
 
 	closeSocketTIPC (soc);
-	debug ("PASSED (client)\n");
+	dbg1 ("PASSED (client)\n");
 
 	sendSyncTIPC (TS_SYNC_ID_2);
 }
@@ -618,7 +631,7 @@ void client_test_anc_connectionless(void)
 	iov[0].iov_base = buf;
 	iov[0].iov_len = TS_ANCBUFSZ;
 
-	debug("RDM (client)...");
+	dbg1("RDM (client)...");
 
 	/* wait for the server to get online */
 	recvSyncTIPC (TS_SYNC_ID_1);
@@ -636,56 +649,56 @@ void client_test_anc_connectionless(void)
 
 	ctrlbuf.msg_controllen = CMSG_SPACE(8) + CMSG_SPACE(1024);
 
-	debug ("anc receiving...\n");
+	dbg1 ("anc receiving...\n");
 
 	sz = recvmsg(soc ,&ctrlbuf ,0);	   /* now try and receive the message */
 
-	debug("recvmsg returned %d \n",sz);
+	dbg1("recvmsg returned %d \n",sz);
 
 	if (sz != 0)
-		failTest ("recvmsg");
+		err ("recvmsg");
 
-	debug ("got something...\n");
+	dbg1 ("got something...\n");
 
 	anc = CMSG_FIRSTHDR(&ctrlbuf);
 
 	if (anc == NULL)
-		failTest ("FAILED (client) anc is NULL");
+		err ("FAILED (client) anc is NULL");
 
 	if (anc->cmsg_type != TIPC_ERRINFO) {
 		anc_data_type(str, anc->cmsg_type);
 		sprintf (failStr, "bad anc data type = %d = %s",anc->cmsg_type, str);
-		failTest (failStr);
+		err (failStr);
 	}
 
-	debug ("anc : got anc data\n");
+	dbg1 ("anc : got anc data\n");
 	anc_data[0] = *((unsigned int*)(CMSG_DATA(anc) + 0));
 	anc_data[1] = *((unsigned int*)(CMSG_DATA(anc) + 4));
 
 	if (anc_data[1] != msgSize) {
 		sprintf (failStr,"bad return size %d",anc_data[1]);
-		failTest (failStr);
+		err (failStr);
 	}
 
 	if (anc_data[0] != TIPC_ERR_NO_PORT) {
 		sprintf (failStr,"bad return code %d",anc_data[0]);
-		failTest (failStr);
+		err (failStr);
 	}
 
 	anc = CMSG_NXTHDR (&ctrlbuf ,anc);
 
 	if (anc == NULL)
-		failTest ("no returned msg...?\n");
+		err ("no returned msg...?\n");
 
 
-	debug ("returned msg: %s\n" ,(char*) CMSG_DATA (anc));
+	dbg1 ("returned msg: %s\n" ,(char*) CMSG_DATA (anc));
 
 	if (strcmp ((char*)CMSG_DATA(anc) ,"OMEGA")) {
-		failTest ("wrong returned message");
+		err ("wrong returned message");
 	}
 
 
-	debug ("PASSED (client)\n");
+	dbg1 ("PASSED (client)\n");
 
 	closeSocketTIPC(soc);
 
@@ -776,10 +789,10 @@ void client_test_stream(void)
 
 	info("Client: waiting for server acknowledgements\n");
 	if (recv(sd, buf, rec_num, MSG_WAITALL) != rec_num) {
-		failTest("Client: acknowledge error 1");
+		err("Client: acknowledge error 1");
 	}
 	if (recv(sd, buf, 1, MSG_DONTWAIT) >= 0) {
-		failTest("Client: acknowledge error 2");
+		err("Client: acknowledge error 2");
 	}
 	info("Client: received %d acknowledgements\n", rec_num);
 
@@ -862,7 +875,7 @@ void sendTIPCTest
 	              (struct sockaddr *)&addr, sizeof (addr));
 
 	if (res != msgSize)
-		failTest ("unexpected sendto() error sending Server test number");
+		err ("unexpected sendto() error sending Server test number");
 
 	closeSocketTIPC (sockfd_C);
 
