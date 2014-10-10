@@ -87,7 +87,7 @@ int msg_init(struct tipc_nl_msg *msg)
 		goto sock_err;
 	}
 
-	msg->nl_family = genl_ctrl_resolve(msg->nl_sock, TIPC_GENL_NAME);
+	msg->nl_family = genl_ctrl_resolve(msg->nl_sock, TIPC_GENL_V2_NAME);
 	if (!msg->nl_family) {
 		log_err("retrieving TIPC netlink family id\n");
 		goto sock_err;
