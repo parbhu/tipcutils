@@ -43,7 +43,6 @@ AC_CONFIG_FILES([
 	Makefile
 	tipc-config/Makefile
 	tipc-pipe/Makefile
-	tipc-config-wrapper/Makefile
 	tipc/Makefile
 	ptts/Makefile
 	demos/Makefile
