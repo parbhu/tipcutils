@@ -39,7 +39,7 @@
 #include "common_tipc.h"
 
 #define TERMINATE 1
-#define DEFAULT_CLIENTS   8
+#define DEFAULT_CLIENTS   1
 #define DEFAULT_LAT_MSGS  200000
 #define DEFAULT_THRU_MSGS 200000
 #define DEFAULT_BURST     16
@@ -176,7 +176,7 @@ static void usage(char *app)
 {
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr," %s ", app);
-	fprintf(stderr, "[-l <lat msgs>] [-t <tput <msgs>]"
+	fprintf(stderr, "[-l [lat msgs]] [-t [<tput msgs>]]"
                          " [-c <num conns>] [-p <tipc | tcp>]\n");
 	fprintf(stderr, "\tmsgs to transfer for latency measurement (default %u)\n",
 		DEFAULT_LAT_MSGS);
@@ -358,13 +358,17 @@ int main(int argc, char *argv[], char *dummy[])
 
 	/* Process command line arguments */
 
-	while ((c = getopt(argc, argv, "l:t:c:p:m:")) != -1) {
+	while ((c = getopt(argc, argv, "l::t::c:p:m:")) != -1) {
 		switch (c) {
 		case 'l':
-			latency_transf = atoi(optarg);
+			if (optarg)
+				latency_transf = atoi(optarg);
+			thruput_transf = 0;
 			break;
 		case 't':
-			thruput_transf = atoi(optarg);
+			if (optarg)
+				thruput_transf = atoi(optarg);
+			latency_transf = 0;
 			break;
 		case 'm':
 			first_msglen = atoi(optarg);
