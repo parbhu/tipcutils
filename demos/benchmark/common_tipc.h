@@ -64,8 +64,7 @@
 #define CLNT_CTRL_NAME  19999
 
 #define TERMINATE 1
-#define DEFAULT_CLIENTS 8
-
+#define DEFAULT_CLIENTS 1
 #define DEBUG 0
 
 #define dprintf(fmt, arg...)  do {if (DEBUG) printf(fmt, ## arg);} while(0)
@@ -208,7 +207,7 @@ static int wait_for_msg(int sd)
 	return res;
 }
 
-static void get_ip_list(struct srv_info *sinfo)
+static void get_ip_list(struct srv_info *sinfo, char *ifname)
 {
 	char buf[8192] = {0};
 	struct ifconf ifc = {0};
@@ -238,6 +237,13 @@ static void get_ip_list(struct srv_info *sinfo)
 		if(ioctl(sck, SIOCGIFADDR, item) < 0)
 			perror("ioctl(OSIOCGIFADDR)");
 		ip = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
+
+		if (ifname && !strcmp(ifname, item->ifr_name)) {
+			sinfo->ips[0] = ip;
+			sinfo->num_ips = htons(1);
+			//printf(" returning one if\n");
+			break;
+		}
 
 		/* Register if set and not loopback */
 		if (ip && (ntohl(ip) != 0x7f000001)) {

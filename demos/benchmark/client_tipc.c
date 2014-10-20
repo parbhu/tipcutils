@@ -39,9 +39,8 @@
 #include "common_tipc.h"
 
 #define TERMINATE 1
-#define DEFAULT_CLIENTS   1
-#define DEFAULT_LAT_MSGS  200000
-#define DEFAULT_THRU_MSGS 200000
+#define DEFAULT_LAT_MSGS  320000
+#define DEFAULT_THRU_MSGS 320000
 #define DEFAULT_BURST     16
 #define DEFAULT_MSGLEN    64
 
@@ -68,7 +67,7 @@ static int master_clnt_sd;
 static int master_srv_sd;
 static uint client_id;
 static unsigned char *buf = NULL;
-static int select_ip(struct srv_info *sinfo);
+static int select_ip(struct srv_info *sinfo, char *name);
 static void stream_messages(int peer_sd, int clnt_id,
 			    int msgcnt, int msglen,
 			    int bounce);
@@ -177,13 +176,15 @@ static void usage(char *app)
 	fprintf(stderr, "Usage:\n");
 	fprintf(stderr," %s ", app);
 	fprintf(stderr, "[-l [lat msgs]] [-t [<tput msgs>]]"
-                         " [-c <num conns>] [-p <tipc | tcp>]\n");
+                         " [-c <num conns>] [-p <tipc | tcp>]"
+		         "[-i <ifname>]\n");
 	fprintf(stderr, "\tmsgs to transfer for latency measurement (default %u)\n",
 		DEFAULT_LAT_MSGS);
 	fprintf(stderr, "\tmsgs to transfer for throughput measurement (default %u)\n",
 		DEFAULT_THRU_MSGS);
 	fprintf(stderr, "\tnumber of connections defaults to %d\n", DEFAULT_CLIENTS);
 	fprintf(stderr, "\tprotocol to measure (defaults to tipc)\n");
+	fprintf(stderr, "\tinterface to use for tcp (default: last found)\n");
 }
 
 static unsigned long long elapsednanos(struct timeval *from)
@@ -353,12 +354,13 @@ int main(int argc, char *argv[], char *dummy[])
 	uint tcp_addr = 0;
 	struct srv_info sinfo;
 	__u32 peer_tipc_addr;
+	char ifname[16] = {0,};
 
 	setbuf(stdout, NULL);
 
 	/* Process command line arguments */
 
-	while ((c = getopt(argc, argv, "l::t::c:p:m:")) != -1) {
+	while ((c = getopt(argc, argv, "l::t::c:p:m:i:")) != -1) {
 		switch (c) {
 		case 'l':
 			if (optarg)
@@ -384,6 +386,12 @@ int main(int argc, char *argv[], char *dummy[])
 				conn_typ = TCP_CONN;
 			else if (strcmp("tipc", optarg))
 				die("Invalid protocol; must be 'tcp' or 'tipc'\n");
+			break;
+		case 'i':
+			if (strcpy(ifname, optarg))
+				conn_typ = TCP_CONN;
+			if (!strlen(ifname))
+				die("Missing interface name after option -i\n");
 			break;
 		default:
 			usage(argv[0]);
@@ -435,7 +443,7 @@ int main(int argc, char *argv[], char *dummy[])
 	}
 	
 	tcp_port = ntohs(sinfo.tcp_port);
-	tcp_addr = select_ip(&sinfo);
+	tcp_addr = select_ip(&sinfo, ifname);
 
 	printf("****** TIPC Benchmark Client Started ******\n");
 	if (conn_typ == TCP_CONN) {
@@ -523,8 +531,8 @@ end_latency:
 		unsigned long long msg_per_sec;
 		int i;
 
-		msgcnt = thruput_transf / iter++;
-
+		msgcnt = thruput_transf / (1 << (iter - 1));
+		iter ++;
 		printf("| %9llu  | %4llu  | %8llu  ", msglen, num_clients, msgcnt);
 
 		gettimeofday(&start_time, 0);
@@ -579,7 +587,7 @@ end_thruput:
 	exit(0);
 }
 
-static int select_ip(struct srv_info *sinfo)
+static int select_ip(struct srv_info *sinfo, char* ifname)
 {
 	struct srv_info cinfo;
 	int clnt_ip_num, srv_ip_num;
@@ -588,28 +596,33 @@ static int select_ip(struct srv_info *sinfo)
 	int s_ip, c_ip, best_ip = 0;
 	int best_prefix = 32;
 	int mask, shift;
+	struct in_addr ip_addr;
 
-	get_ip_list(&cinfo);
+	get_ip_list(&cinfo, ifname);
+
 	clnt_ip_num = ntohs(cinfo.num_ips);
 	srv_ip_num = ntohs(sinfo->num_ips);
 	for (; s_ipno < srv_ip_num; s_ipno++) {
 		s_ip = ntohl(sinfo->ips[s_ipno]);
+		ip_addr.s_addr = htonl(s_ip);
+
 		for (c_ipno = 0; c_ipno < clnt_ip_num; c_ipno++) {
 			c_ip = ntohl(cinfo.ips[c_ipno]);
 			mask = ~0;
 			shift = 0;
-
 			if (c_ip == s_ip)
 				return 0x7f000001;
 
 			while ((c_ip & mask) != (s_ip & mask))
 				mask <<= ++shift;
 
-			if (shift < best_prefix) {
+			if (shift <= best_prefix) {
 				best_prefix = shift;
 				best_ip = s_ip;
 			}
 		}
 	}
+
+	ip_addr.s_addr = htonl(best_ip);
 	return best_ip;
 }
