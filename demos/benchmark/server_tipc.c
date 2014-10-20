@@ -144,7 +144,7 @@ reset:
 			srv_addr.sin_port = htons(++tcp_port);
 
 		/* Inform master about own IP addresses and listener port number */
-		get_ip_list(&sinfo);
+		get_ip_list(&sinfo, NULL);
 		sinfo.tcp_port = htons(tcp_port);
 		printf("******    TCP Listener Socket Created    ******\n");
 		srv_to_master(SRV_INFO, &sinfo);
