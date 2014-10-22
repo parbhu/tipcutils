@@ -39,7 +39,7 @@
 #include "common_tipc.h"
 
 #define TERMINATE 1
-#define DEFAULT_LAT_MSGS  320000
+#define DEFAULT_LAT_MSGS  80000
 #define DEFAULT_THRU_MSGS 320000
 #define DEFAULT_BURST     16
 #define DEFAULT_MSGLEN    64
