@@ -33,7 +33,7 @@
 #include <netlink/netlink.h>
 #include <netlink/genl/genl.h>
 
-#include <linux/tipc_config.h>
+#include <linux/tipc_netlink.h>
 
 #include "netlink.h"
 #include "cmdl.h"

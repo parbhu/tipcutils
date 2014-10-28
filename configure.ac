@@ -14,6 +14,7 @@ fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/tipc.h])
+AC_CHECK_HEADERS([linux/tipc_netlink.h], [tipc_api=new],[tipc_api=old])
 
 # Checks for library functions.
 PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
@@ -21,18 +22,6 @@ PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
 CFLAGS="$CFLAGS -Wall -fno-strict-aliasing"
 
 AC_MSG_CHECKING([TIPC netlink API])
-AC_COMPILE_IFELSE([
-	AC_LANG_PROGRAM([[
-		#include <linux/tipc_config.h>
-		]],[[
-
-		if (TIPC_NL_UNSPEC == 0)
-			return 0;
-
-		return -1;
-		]])],
-               [tipc_api=new],
-               [tipc_api=old])
 AC_MSG_RESULT([$tipc_api])
 if test "x$tipc_api" = "xnew"; then
 	AC_DEFINE(TIPC_NEW_NL_API, 1, [using new tipc tool])
