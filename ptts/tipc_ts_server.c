@@ -587,7 +587,6 @@ static char *rcvbuf = NULL;
 /**
  * server_mcast -
  */
-#if 0
 void server_mcast
 (
         int *sd,		 /* array of sockets */
@@ -604,99 +603,14 @@ void server_mcast
 		{0,0,0,1,1},
 		{0,0,0,1,1}
 	};
-	int expected_burst[7/*TIPC_MCAST_SUBTESTS*/] = {1, 1 , 1, 1, 200, 200, 40};
-	int expected_szs[7/*TIPC_MCAST_SUBTESTS*/] = {100, 100 , 100, 100, 100, 1000, 1000};
-	int used_sks[7/*TIPC_MCAST_SUBTESTS*/] = {3, 2 , 2, 5, 2, 2, 2};
+	static int exp_num[7] = {3,2,2,5,2,2,2};
+	int expected_burst[7] = {1, 1 , 1, 1, 200, 200, 40};
+	int expected_szs[7] = {100, 100 , 100, 100, 100, 1000, 66000};
+	int used_sks[7] = {3, 2 , 2, 5, 2, 2, 2};
 	int st = numSubTest + 1;
 	fd_set fds;
 	struct timeval timeout;	/* timeout structure for select */
-	int num_ready;
-	int i;	
-	int rc = -1;				 /* loop variable */
-	int gotMsg;
-	int msgno;
-	char *buf;
-
-	if (!rcvbuf) 
-		rcvbuf = malloc(66000);
-	buf = rcvbuf;
-	recvSyncTIPC (TS_SYNC_ID_3);	/* wait for client to finish sending messages */
-
-	fds = *readfds;
-	timeout.tv_sec  = 0;
-	timeout.tv_usec = 0;
-	num_ready = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
-
-	dbg1("===>Starting SubTest %d\n", st);
-
-	if (num_ready < 0)
-		err("select() returned error");
-
-	/* Handle special case of inter-cluster multicasting */
-
-	if (!client_in_same_cluster) {
-		if (num_ready > 0)
-			err("unexpected multicast messages received");
-		else
-			goto exit;
-	}
-	/* Handle normal case of intra-cluster multicasting */
-	for (msgno = 0; msgno < expected_burst[numSubTest]; msgno++) {
-		for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
-
-			gotMsg = !!FD_ISSET(sd[i], &fds);
-			if (gotMsg != expected[numSubTest][i]) {
-				dbg2("multicast subtest %d index %d expected %d got %d\n",
-				       numSubTest, i, expected[numSubTest][i], gotMsg);
-				err("unexpected multicast result");
-			}
-			if (gotMsg) {
-				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], MSG_DONTWAIT,
-					      NULL, NULL);
-				if (rc < 0)
-					err("multicast message not received");
-				if (rc != expected_szs[numSubTest])
-					err("multicast message wrong size");					
-			}
-			if (numSubTest < 4) {			
-				if (recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
-					     NULL, NULL) >= 0) {
-					err("second multicast message received");
-				}
-			}
-		}
-		dbg2("    Received msg #%u\n", msgno);
-	}
-
-exit:
-	dbg1 ("==>Finished SubTest %d: received %u msgs of sz %i\n", st, msgno, rc);
-	sendSyncTIPC (TS_SYNC_ID_4);	/* tell client to continue */
-}
-#endif
-
-void server_mcast
-(
-        int *sd,		 /* array of sockets */
-        fd_set *readfds,	 /* file descriptor for all the sockets */
-        int numSubTest				 /* subtest currently being run */
-)
-{
-	static int expected[/*TIPC_MCAST_SUBTESTS*/7][TIPC_MCAST_SOCKETS] = {
-		{1,1,1,0,0},
-		{0,0,1,1,0},
-		{0,0,0,1,1},
-		{1,1,1,1,1},
-		{0,0,0,1,1},
-		{0,0,0,1,1},
-		{0,0,0,1,1}
-	};
-	int expected_burst[7/*TIPC_MCAST_SUBTESTS*/] = {1, 1 , 1, 1, 200, 200, 40};
-	int expected_szs[7/*TIPC_MCAST_SUBTESTS*/] = {100, 100 , 100, 100, 100, 1000, 66000};
-	int used_sks[7/*TIPC_MCAST_SUBTESTS*/] = {3, 2 , 2, 5, 2, 2, 2};
-	int st = numSubTest + 1;
-	fd_set fds;
-	struct timeval timeout;	/* timeout structure for select */
-	int num_ready;
+	int num_ready = 0;
 	int i;	
 	int rc = -1;				 /* loop variable */
 	int gotMsg;
@@ -706,13 +620,9 @@ void server_mcast
 	if (!rcvbuf) 
 		rcvbuf = malloc(66000);
 	buf = rcvbuf;
-	recvSyncTIPC (TS_SYNC_ID_3);	/* wait for client to finish sending messages */
-
-	fds = *readfds;
-	timeout.tv_sec  = 0;
+	recvSyncTIPC (TS_SYNC_ID_3);	/* wait for client to tell us to start */
+	timeout.tv_sec  = 1;
 	timeout.tv_usec = 0;
-	num_ready = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
-
 	dbg1("===>Starting SubTest %d\n", st);
 
 	if (num_ready < 0)
@@ -728,33 +638,46 @@ void server_mcast
 	}
 	/* Handle normal case of intra-cluster multicasting */
 	for (msgno = 0; msgno < expected_burst[numSubTest]; msgno++) {
-		for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
+		int exp_sks = exp_num[numSubTest];
+		int sk_cnt = 0;
+		while (sk_cnt < exp_sks ) {
+			fds = *readfds;			
+			num_ready = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
+			if (!num_ready) {
+				printf("Received on %u sockets in subtest %u, expected %u\n",
+				       sk_cnt, numSubTest, exp_num[numSubTest]);
+				break;
+			}
+			timeout.tv_sec  = 1;
+			for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
+//				printf("trying sk %i (%u), numready %u\n", i, get_portid(sd[i]),num_ready);
+				
+				gotMsg = !!FD_ISSET(sd[i], &fds);
+				if (!gotMsg)
+					continue;
 
-			gotMsg = !!FD_ISSET(sd[i], &fds);
-			if (gotMsg != expected[numSubTest][i]) {
-				dbg2("multicast subtest %d index %d expected %d got %d\n",
-				       numSubTest, i, expected[numSubTest][i], gotMsg);
-				err("unexpected multicast result");
-			}
-			if (gotMsg) {
-				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], MSG_DONTWAIT,
-					      NULL, NULL);
-				if (rc < 0)
-					err("multicast message not received");
-				if (rc != expected_szs[numSubTest])
-					err("multicast message wrong size");
-				if (checkArray(buf, rc))
-					err("received multicast msg corrupted\n");
-				msgcnt++;
-			}
-			if (numSubTest < 4) {			
-				if (recvfrom(sd[i], buf, sizeof(buf), MSG_DONTWAIT,
-					     NULL, NULL) >= 0) {
-					err("second multicast message received");
+				if (gotMsg) {
+					rc = recvfrom(sd[i], buf, expected_szs[numSubTest], 
+						      0, NULL, NULL);
+					if (rc < 0)
+						err("multicast message not received");
+					if (rc != expected_szs[numSubTest])
+						err("multicast message wrong size");
+					if (checkArray(buf, rc))
+						err("received multicast msg corrupted\n");
+					msgcnt++;
+					dbg1("    Received msg #%u (##%i) on sk %u\n", msgno, *(int*)buf, get_portid(sd[i]));
+					sk_cnt++;
+				}
+				if (numSubTest < 4) {	
+//					printf("trying second sk %i\n", i);		
+					if (recvfrom(sd[i], buf, sizeof(buf),
+						     MSG_DONTWAIT, NULL, NULL) >= 0) {
+						err("second multicast message received");
+					}
 				}
 			}
 		}
-		dbg2("    Received msg #%u\n", msgno);
 	}
 
 exit:
@@ -794,7 +717,6 @@ void server_test_multicast(void)
 	for (i = 0; i < TIPC_MCAST_SUBTESTS; i++) {
 		server_mcast(sd, &readfds, i);
 	}
-
 	for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
 		closeSocketTIPC (sd[i]);
 	}

@@ -163,6 +163,7 @@ extern TSTEST clientList[];
 extern TSTEST serverList[];
 extern char * testName(int test);
 
+unsigned int get_portid(int sd);
 
 #endif
 

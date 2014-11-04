@@ -253,6 +253,7 @@ void client_mcast
 	int len;
 	int i;
 
+	sendSyncTIPC (TS_SYNC_ID_3);	/* tell server to check for messages */
 	dbg1("===> Starting multicast subtest #%u\n", subtest);
 	setServerAddrTo (&server_addr, TIPC_ADDR_MCAST, TS_TEST_TYPE, lower, upper);
 /*
@@ -266,6 +267,7 @@ void client_mcast
 	makeArray(buf, msgsize, 0, msgsize);
 	len = msgsize;
 	for (i = 0; i < burstsize; i++) {
+//		*(int*)buf = i;
 		if (len != sendto(sd, buf, len, 0,
 				  (struct sockaddr *)&server_addr, sizeof(struct sockaddr_tipc))) {
 			err("Client: Failed to send");
@@ -273,7 +275,6 @@ void client_mcast
 	}
 	dbg2("    Sent: %s\n", buf);
 	free(buf);
-	sendSyncTIPC (TS_SYNC_ID_3);	/* tell server to check for messages */
 	recvSyncTIPC (TS_SYNC_ID_4);	/* wait for server to complete check */
 	dbg1("===> Finished multicast subtest #%u\n", subtest);
 }

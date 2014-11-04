@@ -1173,3 +1173,13 @@ void common_test_sendto
 
 }
 
+unsigned int get_portid(int sd)
+{
+        struct sockaddr_tipc addr;
+        socklen_t sz = sizeof(addr);
+
+        if (getsockname(sd, (struct sockaddr *)&addr, &sz) < 0)
+                err("Failed to get sock address\n");
+        return addr.addr.id.ref;
+}
+
