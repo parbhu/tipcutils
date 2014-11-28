@@ -92,6 +92,7 @@
 int sock_type = SOCK_STREAM;
 int addr_type = TIPC_ADDR_NAME;        /* Note: TIPC_ADDR_MCAST == TIPC_ADDR_NAMESEQ */
 int server_type = 1000;                /* should be bigger than TIPC_RESERVED_TYPES */
+int dest_droppable = -1;	       /* Set this option only if >=0 */
 int delay = 0;
 int data_num = 0;
 int data_check = 0;
@@ -411,6 +412,7 @@ int options_init()
 	add_literal_option(data_size);
 	add_literal_option(wait_peer);
 	add_literal_option(recvq_depth);
+	add_literal_option(dest_droppable);
 	add_flag_option("rdm", &sock_type, SOCK_RDM);
 	add_flag_option("pct", &sock_type, SOCK_PACKET);
 	add_flag_option("stm", &sock_type, SOCK_STREAM);
@@ -491,6 +493,9 @@ default values are marked with '*'\n\
        --data_check\n\
                Check sequence numbers in received data,\n\
                generated with option data_num.\n\
+\n\
+	--dest_droppable 0|1 \n\
+		Enable message rejection \n\
 \n\
        --buf_size *66000|<n> \n\
                I/O buffer size (see TIPC_MAX_USER_MSG_SIZE).\n\
@@ -579,6 +584,8 @@ int init(int argc, char *argv[])
 	trvd_(data_num);
 	trvd_(buf_size);
 	trvd_(data_check);
+	if (dest_droppable >= 0)
+		trvd_(dest_droppable);
 	trln();
 	assert(data_size + 1 < buf_size);
 	return 0;
@@ -603,6 +610,11 @@ int run_server(tipc)
 int run_client(int tipc)
 {
 	trl();
+	if (dest_droppable >= 0) {
+		chkne(setsockopt(tipc, SOL_TIPC, TIPC_DEST_DROPPABLE,
+				 &dest_droppable, sizeof(dest_droppable)));
+
+	}
 	switch (sock_type) {
 	case SOCK_SEQPACKET:
 	case SOCK_STREAM:
