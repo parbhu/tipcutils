@@ -18,7 +18,7 @@ AC_CHECK_HEADERS([linux/tipc_netlink.h], [tipc_api=new],[tipc_api=old])
 
 # Checks for library functions.
 PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
-
+PKG_CHECK_MODULES([LIBDAEMON], [libdaemon])
 CFLAGS="$CFLAGS -Wall -fno-strict-aliasing"
 
 AC_MSG_CHECKING([TIPC netlink API])
@@ -44,6 +44,7 @@ AC_CONFIG_FILES([
 	demos/topology_subscr_demo/Makefile
         man/Makefile
 	scripts/Makefile
+	tipclog/Makefile
 	])
 AM_CONDITIONAL(WITH_SCRIPTS, false)
 AC_ARG_ENABLE(scripts,

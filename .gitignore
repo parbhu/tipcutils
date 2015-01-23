@@ -39,3 +39,4 @@ ptts/tipcTS
 tipc-config/tipc-config
 tipc-pipe/tipc-pipe
 tipc/tipc
+tipclog/tipclog
