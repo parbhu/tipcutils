@@ -28,6 +28,9 @@ if test "x$tipc_api" = "xnew"; then
 fi
 AM_CONDITIONAL(TIPC_NEW_NL_API, test "x$tipc_api" = "xnew")
 
+AC_CHECK_TYPE(struct tipc_sioc_ln_req, [tipc_lss=yes],[], [[#include <linux/tipc.h>]])
+AM_CONDITIONAL(TIPC_LINK_STATE_SUBSCRITION, test "x$tipc_lss" = "xyes")
+
 AC_CONFIG_FILES([
 	Makefile
 	tipc-config/Makefile
