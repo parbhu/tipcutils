@@ -615,7 +615,7 @@ void client_test_anc_connectionless(void)
 	struct cmsghdr * anc = (struct cmsghdr *)ancSpace; /* pointer to the anc space */
 	int sz;						   /* size of the received message */
 	int anc_data[2];				   /* array for storing the anc data */
-	int tmp;										   /* temp variable to set a socket option */
+	int tmp;					   /* temp variable to set a socket option */
 	struct iovec iov[1];				   /* the iov structure to access the anc data */
 
 

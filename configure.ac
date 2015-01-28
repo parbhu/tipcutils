@@ -38,6 +38,7 @@ AC_CONFIG_FILES([
 	demos/benchmark/Makefile
 	demos/connection_demo/Makefile
 	demos/hello_world/Makefile
+	demos/c_api_test/Makefile
 	demos/inventory_sim/Makefile
 	demos/multicast_demo/Makefile
 	demos/stream_demo/Makefile
