@@ -69,6 +69,7 @@ int main(int argc, char *argv[], char *dummy[])
 
 	printf("****** TIPC C API Test Client Started ******\n\n");
 
+	tipc_srv_wait(&srv, -1);
 	sd = tipc_socket(SOCK_RDM);
 	if (tipc_sock_rejectable(sd) < 0)
 		die("Client: set rejectable failed\n");

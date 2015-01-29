@@ -74,7 +74,7 @@ tipc_domain_t tipc_domain(unsigned int zone, unsigned int cluster,
 			  unsigned int node);
 
 /* Socket:
- * - Rejectable: sent messages will return if rejected at destination
+ * - 'Rejectable': sent messages will return if rejected at destination
  */
 int tipc_socket(int sk_type);
 int tipc_sock_non_block(int sd);
@@ -104,14 +104,14 @@ int tipc_send(int sd, const char *msg, size_t len);
 int tipc_mcast(int sd, const char *msg, size_t len, tipc_addr_t *dst);
 
 /* Topology Server:
- * - Expiration time in [ms]. 
+ * - Expiration time in [ms]
  * - If (expire < 0) subscription never expires
  */
 int tipc_topsrv_conn(tipc_domain_t topsrv_node);
 int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 		    bool all, int expire);
 int tipc_srv_evt(int sd, tipc_addr_t *srv, bool *available, bool *expired);
-bool tipc_srv_wait(uint32_t type, uint32_t instance, int expire);
+bool tipc_srv_wait(tipc_addr_t *srv, int expire);
 
 int tipc_neigh_subscr(tipc_domain_t topsrv_node);
 int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *available);

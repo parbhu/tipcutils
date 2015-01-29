@@ -289,7 +289,8 @@ int tipc_recvfrom(int sd, char *buf, size_t len, tipc_addr_t *src,
 		anc = CMSG_NXTHDR(&msg, anc);
 		memcpy(buf, (char*)CMSG_DATA(anc), rc);
 		anc = CMSG_NXTHDR(&msg, anc);
-	} 
+	}
+
 	if (err)
 		*err = _err;
 	else if (_err)
@@ -364,7 +365,7 @@ int tipc_srv_evt(int sd, tipc_addr_t *srv, bool *available, bool *expired)
 	return 0;
 }
 
-bool tipc_srv_wait(uint32_t type, uint32_t instance, int wait)
+bool tipc_srv_wait(tipc_addr_t *srv, int wait)
 {
 	int sd, rc = 0;
 	bool up = false;
@@ -373,7 +374,8 @@ bool tipc_srv_wait(uint32_t type, uint32_t instance, int wait)
 	sd = tipc_topsrv_conn(0);
 	if (sd < 0)
 		return false;
-	if (tipc_srv_subscr(sd, type, instance, instance, false, wait))
+	if (tipc_srv_subscr(sd, srv->type, srv->instance,
+			    srv->instance, false, wait))
 		rc = -1;
 	if (tipc_srv_evt(sd, 0, &up, &expired))
 		rc = -1;
