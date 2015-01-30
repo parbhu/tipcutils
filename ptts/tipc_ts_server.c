@@ -613,7 +613,6 @@ void server_mcast
 	int num_ready = 0;
 	int i;	
 	int rc = -1;				 /* loop variable */
-	int gotMsg;
 	int msgno = 0, msgcnt = 0;
 	char *buf;
 
@@ -650,27 +649,32 @@ void server_mcast
 			}
 			timeout.tv_sec  = 1;
 			for (i = 0; i < TIPC_MCAST_SOCKETS; i++) {
-//				printf("trying sk %i (%u), numready %u\n", i, get_portid(sd[i]),num_ready);
 				
-				gotMsg = !!FD_ISSET(sd[i], &fds);
-				if (!gotMsg)
+				if(!FD_ISSET(sd[i], &fds))
 					continue;
 
-				if (gotMsg) {
-					rc = recvfrom(sd[i], buf, expected_szs[numSubTest], 
-						      0, NULL, NULL);
-					if (rc < 0)
-						err("multicast message not received");
-					if (rc != expected_szs[numSubTest])
-						err("multicast message wrong size");
-					if (checkArray(buf, rc))
-						err("received multicast msg corrupted\n");
-					msgcnt++;
-					dbg1("    Received msg #%u (##%i) on sk %u\n", msgno, *(int*)buf, get_portid(sd[i]));
-					sk_cnt++;
+				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], 
+					      MSG_PEEK, NULL, NULL);
+				if (rc < 0)
+					err("multicast message not received");
+				if (msgno != *(int*) buf) {
+					dbg1("Ignoring premature msg %u, currently handling %u\n",
+					       *(int*)buf, msgno);
+					continue;
 				}
+				rc = recvfrom(sd[i], buf, expected_szs[numSubTest], 
+					      0, NULL, NULL);
+				if (rc < 0)
+					err("multicast message not received");
+				if (rc != expected_szs[numSubTest])
+					err("multicast message wrong size");
+				if (checkArray(buf + sizeof(int), rc - sizeof(int)))
+					err("received multicast msg corrupted\n");
+				msgcnt++;
+				dbg1("    Received msg #%u (##%i) on sk %u\n", msgno, *(int*)buf, get_portid(sd[i]));
+				sk_cnt++;
+
 				if (numSubTest < 4) {	
-//					printf("trying second sk %i\n", i);		
 					if (recvfrom(sd[i], buf, sizeof(buf),
 						     MSG_DONTWAIT, NULL, NULL) >= 0) {
 						err("second multicast message received");

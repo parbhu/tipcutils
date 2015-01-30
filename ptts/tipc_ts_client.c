@@ -264,10 +264,10 @@ void client_mcast
 	        server_addr.addr.nameseq.upper);
 	dbg2("    Sending: %s\n", buf);
 */
-	makeArray(buf, msgsize, 0, msgsize);
+	makeArray(buf + sizeof(int), msgsize - sizeof(int), 0, msgsize - sizeof(int));
 	len = msgsize;
 	for (i = 0; i < burstsize; i++) {
-//		*(int*)buf = i;
+		*(int*)buf = i;
 		if (len != sendto(sd, buf, len, 0,
 				  (struct sockaddr *)&server_addr, sizeof(struct sockaddr_tipc))) {
 			err("Client: Failed to send");
