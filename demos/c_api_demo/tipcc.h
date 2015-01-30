@@ -33,7 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Version 0.9: Jon Maloy, 2015
+ * Version 0.9.1: Jon Maloy, 2015
  *
  * ------------------------------------------------------------------------
  */
@@ -64,14 +64,15 @@ typedef struct {
 tipc_domain_t tipc_own_node(void);
 tipc_domain_t tipc_own_cluster(void);
 tipc_domain_t tipc_own_zone(void);
-
-char* tipc_addr2str(char *buf, size_t len, tipc_addr_t *addr);
-char* tipc_dom2str(char *buf, size_t len, tipc_domain_t domain);
 static unsigned int tipc_zone(tipc_domain_t domain);
 static unsigned int tipc_cluster(tipc_domain_t domain);
 static unsigned int tipc_node(tipc_domain_t domain);
 tipc_domain_t tipc_domain(unsigned int zone, unsigned int cluster,
 			  unsigned int node);
+char* tipc_ntoa(const tipc_addr_t *addr, char *buf, size_t len);
+char* tipc_dtoa(tipc_domain_t domain, char *buf, size_t len);
+char* tipc_rtoa(uint32_t type, uint32_t lower, uint32_t upper,
+		tipc_domain_t domain, char *buf, size_t len);
 
 /* Socket:
  * - 'Rejectable': sent messages will return if rejected at destination
@@ -86,7 +87,7 @@ int tipc_bind(int sd, uint32_t type, uint32_t upper, uint32_t lower,
 	      tipc_domain_t scope);
 int tipc_unbind(int sd, uint32_t type, uint32_t upper, uint32_t lower);
 
-int tipc_connect(int sd, tipc_addr_t *dst);
+int tipc_connect(int sd, const tipc_addr_t *dst);
 int tipc_accept(int sd);
 
 /* Messaging:
@@ -98,10 +99,10 @@ int tipc_accept(int sd);
 int tipc_recvfrom(int sd, char *buf, size_t len, tipc_addr_t *src,
 		  tipc_addr_t *dst, int *err);
 int tipc_recv(int sd, char* buf, size_t len, bool waitall);
-int tipc_sendto(int sd, const char *msg, size_t len, tipc_addr_t *dst);
+int tipc_sendto(int sd, const char *msg, size_t len, const tipc_addr_t *dst);
 int tipc_sendmsg(int sd, const struct msghdr *msg);
 int tipc_send(int sd, const char *msg, size_t len);
-int tipc_mcast(int sd, const char *msg, size_t len, tipc_addr_t *dst);
+int tipc_mcast(int sd, const char *msg, size_t len, const tipc_addr_t *dst);
 
 /* Topology Server:
  * - Expiration time in [ms]
@@ -111,7 +112,7 @@ int tipc_topsrv_conn(tipc_domain_t topsrv_node);
 int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 		    bool all, int expire);
 int tipc_srv_evt(int sd, tipc_addr_t *srv, bool *available, bool *expired);
-bool tipc_srv_wait(tipc_addr_t *srv, int expire);
+bool tipc_srv_wait(const tipc_addr_t *srv, int expire);
 
 int tipc_neigh_subscr(tipc_domain_t topsrv_node);
 int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *available);
@@ -120,5 +121,6 @@ int tipc_link_subscr(tipc_domain_t topsrv_node);
 int tipc_link_evt(int sd, tipc_domain_t *neigh_node, bool *available,
 	          int *local_bearerid, int *remote_bearerid);
 char* tipc_linkname(char *buf, size_t len, tipc_domain_t peer, int bearerid);
+
 
 #endif

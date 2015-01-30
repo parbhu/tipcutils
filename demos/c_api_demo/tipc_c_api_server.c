@@ -49,7 +49,7 @@
 
 #define die(fmt, arg...)  \
 	do {			     \
-            printf(fmt": ", ## arg); \
+            printf("Server: "fmt, ## arg); \
             perror(NULL); \
             exit(1);\
         } while(0)
@@ -57,28 +57,43 @@
 int main(int argc, char *argv[], char *dummy[])
 {
 	int sd, rc;
-	tipc_addr_t srv, cli;
-	char msg[BUF_SZ];
-	char cbuf[BUF_SZ];
-	char sbuf[BUF_SZ];
+	tipc_addr_t cli, sockid;
+	tipc_addr_t srv = {SRV_TYPE, SRV_INST, 0};
+	char msg[BUF_SZ], cbuf[BUF_SZ], sbuf[BUF_SZ];
+	tipc_domain_t scope = tipc_own_cluster();
+
+	printf("****** TIPC C API Demo Server Started ******\n\n");
 
 	sd = tipc_socket(SOCK_RDM);
-	if (tipc_bind(sd, SRV_TYPE, SRV_INST, SRV_INST, tipc_own_cluster()))
-		die("Server: failed to bind");
+	if (sd <= 0)
+		die("failed to create socket");
 
-	printf("****** TIPC C API Test Server Started ******\n\n");
-	rc = tipc_recvfrom(sd, msg, sizeof(msg), &cli, &srv, 0);
+	if (tipc_bind(sd, SRV_TYPE, 0, ~0, scope))
+		die("failed to bind");
+
+	tipc_sockid(sd, &sockid);
+	tipc_ntoa(&sockid, sbuf, BUF_SZ);
+	printf("Bound socket %s to \n",
+	       tipc_rtoa(srv.type, 0, ~0, scope, sbuf, BUF_SZ));
+
+	rc = tipc_recvfrom(sd, msg, BUF_SZ, &cli, &srv, 0);
 	if (rc <= 0)
 		die("Server: unexpected message\n");
 
-	printf("Server: received msg: %s from %s --> %s\n",msg,
-		tipc_addr2str(cbuf, BUF_SZ, &cli),
-		tipc_addr2str(sbuf, BUF_SZ, &srv));
+	printf("Received msg: %s\n"
+	       "         %s --> %s\n",msg,
+	       tipc_ntoa(&cli, cbuf, BUF_SZ),
+	       tipc_ntoa(&srv, sbuf, BUF_SZ));
 
 	sprintf(msg,"Uh??");
-	if (0 >= tipc_sendto(sd, msg, strlen(msg)+1, &cli))
+	printf("Responding with: %s\n"
+	       "           --> %s\n", msg,
+	       tipc_ntoa(&cli, sbuf, BUF_SZ));
+
+	if (0 >= tipc_sendto(sd, msg, BUF_SZ, &cli))
 		die("Server: failed to send\n");
 
-	printf("****** TIPC C API Test Server Finished ******\n\n");
-	exit(0);
+	close (sd);
+
+	printf("\n****** TIPC C API Demo Server Finished ******\n\n");
 }

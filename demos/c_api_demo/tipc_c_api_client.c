@@ -52,7 +52,7 @@
 
 #define die(fmt, arg...)  \
 	do { \
-            printf(fmt": ", ## arg); \
+            printf("Client:" fmt, ## arg); \
             perror(NULL); \
             exit(1);\
         } while(0)
@@ -60,33 +60,53 @@
 int main(int argc, char *argv[], char *dummy[])
 {
 	int sd, rc, err;
+	tipc_addr_t cli, sockid;;
 	tipc_addr_t srv = {SRV_TYPE, SRV_INST, 0};
-	tipc_addr_t cli;
-
+	tipc_addr_t dum = {42,1,0};
+	char cbuf[BUF_SZ], sbuf[BUF_SZ], rmsg[BUF_SZ];
 	char msg[BUF_SZ] = {"Hello World"};
-	char cbuf[BUF_SZ];
-	char sbuf[BUF_SZ];
 
-	printf("****** TIPC C API Test Client Started ******\n\n");
+	printf("****** TIPC C API Demo Client Started ******\n\n");
 
+	tipc_ntoa(&srv, sbuf, BUF_SZ);
+	printf("Waiting for Service %s\n", sbuf);
 	tipc_srv_wait(&srv, -1);
+	
+	printf("\nSending msg: %s on SOCK_RDM to %s\n", msg, sbuf);
 	sd = tipc_socket(SOCK_RDM);
+	if (sd <= 0)
+		die("failed to create socket");
+	tipc_sockid(sd, &sockid);
 	if (tipc_sock_rejectable(sd) < 0)
-		die("Client: set rejectable failed\n");
+		die("Set rejectable failed\n");
 
-	if (0 >= tipc_sendto(sd, msg, strlen(msg)+1, &srv))
-		die("Client: failed to send\n");
+	if (tipc_sendto(sd, msg, BUF_SZ, &srv) != BUF_SZ)
+		die("sendto() failed\n");
 
-	rc = tipc_recvfrom(sd, msg, sizeof(msg), &srv, &cli, &err);
-	if (rc < 0)
-		die("Client: unexpected response\n");
-	tipc_addr2str(sbuf, BUF_SZ, &srv);
-	tipc_addr2str(cbuf, BUF_SZ, &cli);
+	rc = tipc_recvfrom(sd, rmsg, BUF_SZ, &srv, &cli, &err);
+	if ((rc < 0) || err)
+		die("Unexpected response\n");
 
-	printf("Client: received %s %s from %s to %s\n",
-	       err ? "rejected":"response", msg, sbuf, cbuf);
-	if (err)
-		printf("Error Code is %u\n", err);
-	printf("****** TIPC C API Test Finished ******\n\n");
-	exit(0);
+	printf("Received response: %s\n"
+	       "         %s --> %s\n", rmsg, tipc_ntoa(&srv, sbuf, BUF_SZ),
+	       tipc_ntoa(&cli, cbuf, BUF_SZ));
+
+	dum.domain = srv.domain;
+	printf("\nSending msg: %s on SOCK_RDM to non-existing %s\n", msg,
+	       tipc_ntoa(&dum, sbuf, BUF_SZ));
+
+	if (tipc_sendto(sd, msg, BUF_SZ, &dum) != BUF_SZ)
+		die("sendto() failed\n");
+	
+	rc = tipc_recvfrom(sd, rmsg, BUF_SZ, &srv, &cli, &err);
+	if ((rc < 0) || !err)
+		die("Unexpected response\n");
+	printf("Received rejected msg: %s\n"
+	       "         %s --> %s, err %i\n", rmsg,
+	       tipc_ntoa(&srv, sbuf, BUF_SZ),
+	       tipc_ntoa(&cli, cbuf, BUF_SZ),
+	       err);
+
+	tipc_close(sd);
+	printf("\n****** TIPC C API Demo Finished ******\n\n");
 }
