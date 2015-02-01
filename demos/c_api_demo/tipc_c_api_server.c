@@ -57,8 +57,8 @@
 int main(int argc, char *argv[], char *dummy[])
 {
 	int sd, rc;
-	tipc_addr_t cli, sockid;
-	tipc_addr_t srv = {SRV_TYPE, SRV_INST, 0};
+	struct tipc_addr cli, sockid;
+	struct tipc_addr srv = {SRV_TYPE, SRV_INST, 0};
 	char msg[BUF_SZ], cbuf[BUF_SZ], sbuf[BUF_SZ];
 	tipc_domain_t scope = tipc_own_cluster();
 
@@ -73,7 +73,8 @@ int main(int argc, char *argv[], char *dummy[])
 
 	tipc_sockid(sd, &sockid);
 	tipc_ntoa(&sockid, sbuf, BUF_SZ);
-	printf("Bound socket %s to \n",
+	printf("Bound socket %s to %s\n",
+	       tipc_ntoa(&sockid, cbuf, BUF_SZ),
 	       tipc_rtoa(srv.type, 0, ~0, scope, sbuf, BUF_SZ));
 
 	rc = tipc_recvfrom(sd, msg, BUF_SZ, &cli, &srv, 0);
@@ -96,4 +97,5 @@ int main(int argc, char *argv[], char *dummy[])
 	close (sd);
 
 	printf("\n****** TIPC C API Demo Server Finished ******\n\n");
+	exit(0);
 }

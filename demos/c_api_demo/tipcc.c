@@ -67,7 +67,7 @@ static inline bool my_scope(tipc_domain_t domain)
 
 tipc_domain_t tipc_own_node(void)
 {
-	tipc_addr_t sockid;
+	struct tipc_addr sockid;
 	int sd;
 
 	if (own_node)
@@ -121,7 +121,7 @@ int tipc_close(int sd)
 	return close(sd);
 }
 
-int tipc_sockid(int sd, tipc_addr_t *id)
+int tipc_sockid(int sd, struct tipc_addr *id)
 {
 	struct sockaddr_tipc addr;
 	socklen_t sz = sizeof(addr);
@@ -175,7 +175,7 @@ int tipc_unbind(int sd, uint32_t type, uint32_t upper, uint32_t lower)
 	return bind(sd, (struct sockaddr *)&addr, sizeof(addr));
 }
 
-int tipc_connect(int sd, const tipc_addr_t *dst)
+int tipc_connect(int sd, const struct tipc_addr *dst)
 {
 	struct sockaddr_tipc addr;
 
@@ -204,7 +204,8 @@ int tipc_sendmsg(int sd, const struct msghdr *msg)
 	return sendmsg(sd, msg, 0);
 }
 
-int tipc_sendto(int sd, const char *msg, size_t msg_len, const tipc_addr_t *dst)
+int tipc_sendto(int sd, const char *msg, size_t msg_len,
+		const struct tipc_addr *dst)
 {
 	struct sockaddr_tipc addr;
 
@@ -226,7 +227,8 @@ int tipc_sendto(int sd, const char *msg, size_t msg_len, const tipc_addr_t *dst)
 		      (struct sockaddr*)&addr, sizeof(addr));
 }
 
-int tipc_mcast(int sd, const char *msg, size_t msg_len, const tipc_addr_t *dst)
+int tipc_mcast(int sd, const char *msg, size_t msg_len,
+	       const struct tipc_addr *dst)
 {
 	struct sockaddr_tipc addr = {
 		.family                  = AF_TIPC,
@@ -252,8 +254,8 @@ int tipc_recv(int sd, char* buf, size_t buf_len, bool waitall)
 
 }
 
-int tipc_recvfrom(int sd, char *buf, size_t len, tipc_addr_t *src,
-		  tipc_addr_t *dst, int *err)
+int tipc_recvfrom(int sd, char *buf, size_t len, struct tipc_addr *src,
+		  struct tipc_addr *dst, int *err)
 {
 	int rc, _err = 0;
 	struct sockaddr_tipc addr;
@@ -314,7 +316,7 @@ int tipc_recvfrom(int sd, char *buf, size_t len, tipc_addr_t *src,
 int tipc_topsrv_conn(tipc_domain_t node)
 {
 	int sd;
-	tipc_addr_t srv = {TIPC_TOP_SRV, TIPC_TOP_SRV, node};
+	struct tipc_addr srv = {TIPC_TOP_SRV, TIPC_TOP_SRV, node};
 
 	sd = tipc_socket(SOCK_SEQPACKET);
 	if (sd <= 0)
@@ -339,7 +341,7 @@ int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 	return 0;
 }
 
-int tipc_srv_evt(int sd, tipc_addr_t *srv, bool *available, bool *expired)
+int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *available, bool *expired)
 {
 	struct tipc_event evt;
 
@@ -362,7 +364,7 @@ int tipc_srv_evt(int sd, tipc_addr_t *srv, bool *available, bool *expired)
 	return 0;
 }
 
-bool tipc_srv_wait(const tipc_addr_t *srv, int wait)
+bool tipc_srv_wait(const struct tipc_addr *srv, int wait)
 {
 	int sd, rc = 0;
 	bool up = false;
@@ -396,7 +398,7 @@ int tipc_neigh_subscr(tipc_domain_t node)
 
 int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *available)
 {
-	tipc_addr_t srv;
+	struct tipc_addr srv;
 	int rc;
 
 	rc = tipc_srv_evt(sd, &srv, available, 0);
@@ -462,7 +464,7 @@ char* tipc_dtoa(tipc_domain_t domain, char *buf, size_t len)
 	return buf;
 }
 
-char* tipc_ntoa(const tipc_addr_t *addr, char *buf, size_t len)
+char* tipc_ntoa(const struct tipc_addr *addr, char *buf, size_t len)
 {
 	snprintf(buf, len, "%u:%u:%u.%u.%u",
 		 addr->type, addr->instance, tipc_zone(addr->domain),
@@ -474,7 +476,7 @@ char* tipc_ntoa(const tipc_addr_t *addr, char *buf, size_t len)
 char* tipc_rtoa(uint32_t type, uint32_t lower, uint32_t upper,
 		tipc_domain_t domain, char *buf, size_t len)
 {
-	snprintf(buf, len, "%u:%u-%u:%u.%u.%u", type, lower, upper,
+	snprintf(buf, len, "%u:%u:%u:%u.%u.%u", type, lower, upper,
 		 tipc_zone(domain), tipc_cluster(domain),tipc_node(domain));
 	buf[len] = 0;
 	return buf;

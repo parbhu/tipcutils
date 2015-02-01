@@ -60,9 +60,9 @@
 int main(int argc, char *argv[], char *dummy[])
 {
 	int sd, rc, err;
-	tipc_addr_t cli, sockid;;
-	tipc_addr_t srv = {SRV_TYPE, SRV_INST, 0};
-	tipc_addr_t dum = {42,1,0};
+	struct tipc_addr cli, sockid;;
+	struct tipc_addr srv = {SRV_TYPE, SRV_INST, 0};
+	struct tipc_addr dum = {42,1,0};
 	char cbuf[BUF_SZ], sbuf[BUF_SZ], rmsg[BUF_SZ];
 	char msg[BUF_SZ] = {"Hello World"};
 
@@ -109,4 +109,5 @@ int main(int argc, char *argv[], char *dummy[])
 
 	tipc_close(sd);
 	printf("\n****** TIPC C API Demo Finished ******\n\n");
+	exit(0);
 }
