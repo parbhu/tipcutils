@@ -189,9 +189,24 @@ int tipc_connect(int sd, const struct tipc_addr *dst)
 	return connect(sd, (struct sockaddr*)&addr, sizeof(addr));
 }
 
-int tipc_accept(int sd)
+int tipc_listen(int sd, int backlog)
 {
-	return accept(sd, 0, 0);
+	return listen(sd, backlog);
+}
+
+int tipc_accept(int sd, struct tipc_addr *src)
+{
+	struct sockaddr_tipc addr;
+	socklen_t addrlen = sizeof(addr);
+	int rc;
+
+	rc = accept(sd, &addr, &addrlen);
+	if (src) {
+		src->type = 0;
+		src->instance = addr.addr.id.ref;
+		src->domain = addr.addr.id.node;
+	}
+	return rc;
 }
 
 int tipc_send(int sd, const char *msg, size_t msg_len)
@@ -414,7 +429,8 @@ int tipc_link_subscr(tipc_domain_t node)
 	sd = tipc_topsrv_conn(node);
 	if (sd <= 0)
 		return -1;
-	if (tipc_srv_subscr(sd, 2, 0, ~0, true, TIPC_WAIT_FOREVER))
+	if (tipc_srv_subscr(sd, TIPC_LINK_STATE, 0, ~0,
+			    true, TIPC_WAIT_FOREVER))
 		return -1;
 	return sd;
 }
@@ -454,7 +470,6 @@ char* tipc_linkname(char *buf, size_t len, tipc_domain_t peer, int bearerid)
 	buf[len] = 0;
 	return buf;
 }
-
 
 char* tipc_dtoa(tipc_domain_t domain, char *buf, size_t len)
 {

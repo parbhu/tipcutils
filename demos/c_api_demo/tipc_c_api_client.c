@@ -46,37 +46,35 @@
 #include "tipcc.h"
 #include <poll.h>
 
-#define SRV_TYPE  18888
+#define RDM_SRV_TYPE     18888
+#define STREAM_SRV_TYPE  17777
+#define SEQPKT_SRV_TYPE  16666
 #define SRV_INST  17
 #define BUF_SZ 40
 
-#define die(fmt, arg...)  \
-	do { \
-            printf("Client:" fmt, ## arg); \
-            perror(NULL); \
-            exit(1);\
-        } while(0)
+#define die(fmt, arg...) do                     \
+{                                               \
+	printf("Client:" fmt, ## arg);		\
+	perror(NULL);				\
+	exit(1);				\
+} while(0)
 
-int main(int argc, char *argv[], char *dummy[])
+static void rdm_service_demo(int sd, bool up, tipc_domain_t *srv_node)
 {
-	int sd, rc, err;
-	struct tipc_addr cli, sockid;;
-	struct tipc_addr srv = {SRV_TYPE, SRV_INST, 0};
-	struct tipc_addr dum = {42,1,0};
+	struct tipc_addr cli, srv = {RDM_SRV_TYPE, SRV_INST, 0};
 	char cbuf[BUF_SZ], sbuf[BUF_SZ], rmsg[BUF_SZ];
 	char msg[BUF_SZ] = {"Hello World"};
+	int rc, err;
 
-	printf("****** TIPC C API Demo Client Started ******\n\n");
-
+	if (!up) {
+		printf("Service on SOCK_RDM went down\n");
+		return;
+	}
+	printf("\n-------------------------------------\n");
+	printf("Service on SOCK_RDM came up\n");
 	tipc_ntoa(&srv, sbuf, BUF_SZ);
-	printf("Waiting for Service %s\n", sbuf);
-	tipc_srv_wait(&srv, -1);
-	
-	printf("\nSending msg: %s on SOCK_RDM to %s\n", msg, sbuf);
-	sd = tipc_socket(SOCK_RDM);
-	if (sd <= 0)
-		die("failed to create socket");
-	tipc_sockid(sd, &sockid);
+	printf("Sending msg: %s on SOCK_RDM\n"
+	       "                            -->%s\n", msg, sbuf);
 	if (tipc_sock_rejectable(sd) < 0)
 		die("Set rejectable failed\n");
 
@@ -88,26 +86,148 @@ int main(int argc, char *argv[], char *dummy[])
 		die("Unexpected response\n");
 
 	printf("Received response: %s\n"
-	       "         %s --> %s\n", rmsg, tipc_ntoa(&srv, sbuf, BUF_SZ),
-	       tipc_ntoa(&cli, cbuf, BUF_SZ));
+	       "         %s <-- %s\n", rmsg, 
+	       tipc_ntoa(&cli, cbuf, BUF_SZ),
+	       tipc_ntoa(&srv, sbuf, BUF_SZ));
+	*srv_node = srv.domain;
+}
 
-	dum.domain = srv.domain;
-	printf("\nSending msg: %s on SOCK_RDM to non-existing %s\n", msg,
+static void rdm_reject_demo(int sd, bool up, tipc_domain_t srv_node)
+{
+	struct tipc_addr srv, cli, dum = {42, 1, srv_node};
+	char cbuf[BUF_SZ], sbuf[BUF_SZ], msg[BUF_SZ] = {"Hello World"};
+	int err, rc;
+
+	if (!up)
+		return;
+
+	printf("\nSending msg: %s on SOCK_RDM \n"
+	       "                            --> %s (non-existing)\n", msg,
 	       tipc_ntoa(&dum, sbuf, BUF_SZ));
 
-	if (tipc_sendto(sd, msg, BUF_SZ, &dum) != BUF_SZ)
-		die("sendto() failed\n");
+	if (tipc_sendto(sd, msg, BUF_SZ, &dum) != BUF_SZ) {
+		printf("Client sendto() failed: No route to host\n");
+		return;
+	}
 	
-	rc = tipc_recvfrom(sd, rmsg, BUF_SZ, &srv, &cli, &err);
+	rc = tipc_recvfrom(sd, msg, BUF_SZ, &srv, &cli, &err);
 	if ((rc < 0) || !err)
 		die("Unexpected response\n");
 	printf("Received rejected msg: %s\n"
-	       "         %s --> %s, err %i\n", rmsg,
-	       tipc_ntoa(&srv, sbuf, BUF_SZ),
-	       tipc_ntoa(&cli, cbuf, BUF_SZ),
-	       err);
+	       "         %s <-- %s, err %i\n",
+	       msg, tipc_ntoa(&cli, cbuf, BUF_SZ),
+	       tipc_ntoa(&srv, sbuf, BUF_SZ), err);
+	printf("-------------------------------------\n");
+}
 
-	tipc_close(sd);
+static void stream_service_demo(int sd, bool up)
+{
+	struct tipc_addr srv = {STREAM_SRV_TYPE, SRV_INST, 0};
+	char sbuf[BUF_SZ], msg[BUF_SZ] = {"Hello World"};
+
+	if (!up) {
+		printf("Service on SOCK_STREAM went down\n");
+		return;
+	}
+	printf("\n\n-------------------------------------\n");
+	printf("Service on SOCK_STREAM came up\n");
+	tipc_ntoa(&srv, sbuf, BUF_SZ);
+	printf("Connecting to:              -->%s\n",sbuf);
+	if (tipc_connect(sd, &srv) < 0)
+		die("connect() failed\n");
+
+	printf("Sending msg: %s on connection\n", msg);
+	if (tipc_send(sd, msg, BUF_SZ) != BUF_SZ)
+		die("send() failed\n");
+
+	if (tipc_recv(sd, msg, BUF_SZ, 1) < 0)
+		die("Unexpected response\n");
+
+	printf("Received response: %s on STREAM connection\n", msg);
+	printf("-------------------------------------\n");
+}
+
+int main(int argc, char *argv[], char *dummy[])
+{
+	bool up;
+	tipc_domain_t srv_node = 0;
+	tipc_domain_t neigh_node = 0;
+	char sbuf[BUF_SZ];
+	struct tipc_addr srv = {RDM_SRV_TYPE, SRV_INST, 0};
+	int local_bearer, remote_bearer;
+	struct pollfd pfd[5];
+
+	printf("****** TIPC C API Demo Client Started ******\n\n");
+
+	memset(pfd, 0, sizeof(pfd));
+	tipc_ntoa(&srv, sbuf, BUF_SZ);
+	printf("Waiting for Service %s\n", sbuf);
+	tipc_srv_wait(&srv, -1);
+	
+	/* Create traffic sockets */
+	pfd[0].fd = tipc_socket(SOCK_RDM);
+	pfd[0].events = POLLIN;
+	pfd[1].fd = tipc_socket(SOCK_STREAM);
+	pfd[1].events = POLLIN | POLLHUP;
+
+	
+	/* Subscribe for service events */
+	pfd[2].fd = tipc_topsrv_conn(0);
+	pfd[2].events = POLLIN | POLLHUP;
+	if (tipc_srv_subscr(pfd[2].fd, RDM_SRV_TYPE, 0, ~0, false, -1))
+		die("subscribe for RDM server failed\n");
+	if (tipc_srv_subscr(pfd[2].fd, STREAM_SRV_TYPE, 0, ~0, false, -1))
+		die("subscribe for STREAM server failed\n");
+
+	/* Subscribe for neighbor nodes */
+	pfd[3].fd = tipc_neigh_subscr(0);
+	if (pfd[3].fd <= 0)
+		die("subscribe or neighbor nodes failed\n");		
+	pfd[3].events = POLLIN | POLLHUP;
+
+	/* Subscribe for neighbor links */
+	pfd[4].fd = tipc_link_subscr(0);
+	if (pfd[4].fd <= 0)
+		die("subscribe for neigbor links failed\n");		
+	pfd[4].events = POLLIN | POLLHUP;
+
+	while (poll(pfd, 5, 3000000)) {
+		if (pfd[1].revents & POLLHUP) {
+			printf("SOCK_STREAM connection hangup\n");
+			tipc_close(pfd[1].fd);
+			pfd[1].fd = tipc_socket(SOCK_STREAM);
+		}
+		if (pfd[2].revents & POLLIN) {
+			if (tipc_srv_evt(pfd[2].fd, &srv, &up, 0))
+				die("reception of service event failed\n");
+			if (srv.type == RDM_SRV_TYPE) {
+				rdm_service_demo(pfd[0].fd, up, &srv_node);
+				rdm_reject_demo(pfd[0].fd, up, srv_node);
+			}
+			if (srv.type == STREAM_SRV_TYPE)
+				stream_service_demo(pfd[1].fd, up);
+		}
+		if (pfd[3].revents & POLLIN) {
+			if (tipc_neigh_evt(pfd[3].fd, &neigh_node, &up))
+				die("reception of service event failed\n");
+			if (up)
+				printf("Established contact with node %s\n",
+				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
+			else
+				printf("Lost contact with node %s\n",
+				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
+		}
+		if (pfd[4].revents & POLLIN) {
+			if (tipc_link_evt(pfd[4].fd, &neigh_node, &up,
+					  &local_bearer, &remote_bearer))
+				die("reception of service event failed\n");
+			tipc_linkname(sbuf,BUF_SZ, neigh_node, local_bearer);
+			if (up)
+				printf("Established link %s\n", sbuf);
+			else
+				printf("Lost link %s\n", sbuf);
+		}
+	}
 	printf("\n****** TIPC C API Demo Finished ******\n\n");
 	exit(0);
 }
