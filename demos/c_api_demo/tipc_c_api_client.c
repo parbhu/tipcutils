@@ -132,6 +132,35 @@ static void stream_service_demo(int sd, bool up)
 	printf("\n\n-------------------------------------\n");
 	printf("Service on SOCK_STREAM came up\n");
 	tipc_ntoa(&srv, sbuf, BUF_SZ);
+	printf("Performing two-way connect\n"
+               "with message %s   -->%s\n",msg, sbuf);
+	if (tipc_sendto(sd, msg, BUF_SZ, &srv) != BUF_SZ)
+		die("send() failed\n");
+
+	if (tipc_recv(sd, msg, BUF_SZ, 1) < 0)
+		die("Unexpected response\n");
+
+	printf("Received response: %s on SOCK_STREAM connection\n", msg);
+
+	printf("SOCK_STREAM connection established \n"
+	       "                           --> %s\n", sbuf);
+
+	printf("-------------------------------------\n");
+}
+
+
+static void seqpacket_service_demo(int sd, bool up)
+{
+	struct tipc_addr srv = {SEQPKT_SRV_TYPE, SRV_INST, 0};
+	char sbuf[BUF_SZ], msg[BUF_SZ] = {"Hello World"};
+
+	if (!up) {
+		printf("Service on SOCK_SEQPACKET went down\n");
+		return;
+	}
+	printf("\n\n-------------------------------------\n");
+	printf("Service on SOCK_SEQPACKET came up\n");
+	tipc_ntoa(&srv, sbuf, BUF_SZ);
 	printf("Connecting to:              -->%s\n",sbuf);
 	if (tipc_connect(sd, &srv) < 0)
 		die("connect() failed\n");
@@ -143,7 +172,7 @@ static void stream_service_demo(int sd, bool up)
 	if (tipc_recv(sd, msg, BUF_SZ, 1) < 0)
 		die("Unexpected response\n");
 
-	printf("Received response: %s on STREAM connection\n", msg);
+	printf("Received response: %s on SOCK_SEQPACKET connection\n", msg);
 	printf("-------------------------------------\n");
 }
 
@@ -155,7 +184,7 @@ int main(int argc, char *argv[], char *dummy[])
 	char sbuf[BUF_SZ];
 	struct tipc_addr srv = {RDM_SRV_TYPE, SRV_INST, 0};
 	int local_bearer, remote_bearer;
-	struct pollfd pfd[5];
+	struct pollfd pfd[6];
 
 	printf("****** TIPC C API Demo Client Started ******\n\n");
 
@@ -169,36 +198,45 @@ int main(int argc, char *argv[], char *dummy[])
 	pfd[0].events = POLLIN;
 	pfd[1].fd = tipc_socket(SOCK_STREAM);
 	pfd[1].events = POLLIN | POLLHUP;
+	pfd[2].fd = tipc_socket(SOCK_SEQPACKET);
+	pfd[2].events = POLLIN | POLLHUP;
 
 	
 	/* Subscribe for service events */
-	pfd[2].fd = tipc_topsrv_conn(0);
-	pfd[2].events = POLLIN | POLLHUP;
-	if (tipc_srv_subscr(pfd[2].fd, RDM_SRV_TYPE, 0, ~0, false, -1))
+	pfd[3].fd = tipc_topsrv_conn(0);
+	pfd[3].events = POLLIN | POLLHUP;
+	if (tipc_srv_subscr(pfd[3].fd, RDM_SRV_TYPE, 0, ~0, false, -1))
 		die("subscribe for RDM server failed\n");
-	if (tipc_srv_subscr(pfd[2].fd, STREAM_SRV_TYPE, 0, ~0, false, -1))
+	if (tipc_srv_subscr(pfd[3].fd, STREAM_SRV_TYPE, 0, ~0, false, -1))
 		die("subscribe for STREAM server failed\n");
+	if (tipc_srv_subscr(pfd[3].fd, SEQPKT_SRV_TYPE, 0, ~0, false, -1))
+		die("subscribe for SEQPACKET server failed\n");
 
 	/* Subscribe for neighbor nodes */
-	pfd[3].fd = tipc_neigh_subscr(0);
-	if (pfd[3].fd <= 0)
-		die("subscribe or neighbor nodes failed\n");		
-	pfd[3].events = POLLIN | POLLHUP;
-
-	/* Subscribe for neighbor links */
-	pfd[4].fd = tipc_link_subscr(0);
+	pfd[4].fd = tipc_neigh_subscr(0);
 	if (pfd[4].fd <= 0)
-		die("subscribe for neigbor links failed\n");		
+		die("subscribe or neighbor nodes failed\n");		
 	pfd[4].events = POLLIN | POLLHUP;
 
-	while (poll(pfd, 5, 3000000)) {
+	/* Subscribe for neighbor links */
+	pfd[5].fd = tipc_link_subscr(0);
+	if (pfd[5].fd <= 0)
+		die("subscribe for neigbor links failed\n");		
+	pfd[5].events = POLLIN | POLLHUP;
+
+	while (poll(pfd, 6, 3000000)) {
 		if (pfd[1].revents & POLLHUP) {
 			printf("SOCK_STREAM connection hangup\n");
 			tipc_close(pfd[1].fd);
 			pfd[1].fd = tipc_socket(SOCK_STREAM);
 		}
-		if (pfd[2].revents & POLLIN) {
-			if (tipc_srv_evt(pfd[2].fd, &srv, &up, 0))
+		if (pfd[2].revents & POLLHUP) {
+			printf("SOCK_SEQPACKET connection hangup\n");
+			tipc_close(pfd[2].fd);
+			pfd[2].fd = tipc_socket(SOCK_SEQPACKET);
+		}
+		if (pfd[3].revents & POLLIN) {
+			if (tipc_srv_evt(pfd[3].fd, &srv, &up, 0))
 				die("reception of service event failed\n");
 			if (srv.type == RDM_SRV_TYPE) {
 				rdm_service_demo(pfd[0].fd, up, &srv_node);
@@ -206,24 +244,26 @@ int main(int argc, char *argv[], char *dummy[])
 			}
 			if (srv.type == STREAM_SRV_TYPE)
 				stream_service_demo(pfd[1].fd, up);
+			if (srv.type == SEQPKT_SRV_TYPE)
+				seqpacket_service_demo(pfd[2].fd, up);
 		}
-		if (pfd[3].revents & POLLIN) {
-			if (tipc_neigh_evt(pfd[3].fd, &neigh_node, &up))
+		if (pfd[4].revents & POLLIN) {
+			if (tipc_neigh_evt(pfd[4].fd, &neigh_node, &up))
 				die("reception of service event failed\n");
 			if (up)
-				printf("Established contact with node %s\n",
+				printf("Found neighbor node %s\n",
 				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
 			else
 				printf("Lost contact with node %s\n",
 				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
 		}
-		if (pfd[4].revents & POLLIN) {
-			if (tipc_link_evt(pfd[4].fd, &neigh_node, &up,
+		if (pfd[5].revents & POLLIN) {
+			if (tipc_link_evt(pfd[5].fd, &neigh_node, &up,
 					  &local_bearer, &remote_bearer))
 				die("reception of service event failed\n");
 			tipc_linkname(sbuf,BUF_SZ, neigh_node, local_bearer);
 			if (up)
-				printf("Established link %s\n", sbuf);
+				printf("Found link %s\n", sbuf);
 			else
 				printf("Lost link %s\n", sbuf);
 		}

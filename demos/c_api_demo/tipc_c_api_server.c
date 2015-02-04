@@ -111,9 +111,6 @@ static int recv_stream_setup(int sd)
 	if (newsd <= 0)
 		die("accept on SOCK_STREAM failed\n");
 
-	tipc_ntoa(&cli, cbuf, BUF_SZ);
-	printf("SOCK_STREAM connection established\n"
-	       "                        <-- %s\n", cbuf);
 
 	if (tipc_recv(newsd, msg, BUF_SZ, 1) <= 0)
 		die("unexpected message on STREAM socket\n");
@@ -123,8 +120,44 @@ static int recv_stream_setup(int sd)
 	sprintf(msg,"Huh?");
 	printf("Responding with: %s\n", msg);
 
+	tipc_ntoa(&cli, cbuf, BUF_SZ);
+	printf("SOCK_STREAM connection established\n"
+	       "                        --> %s\n", cbuf);
+
 	if (tipc_send(newsd, msg, BUF_SZ) <= 0)
 		die("failed to respond\n");
+	printf("-------------------------------------\n");
+	return newsd;
+}
+
+static int recv_seqpacket_setup(int sd)
+{
+	int newsd;
+	struct tipc_addr cli;
+	char cbuf[BUF_SZ], msg[BUF_SZ];
+
+	printf("\n-------------------------------------\n");
+	tipc_listen(sd, 32);
+	newsd = tipc_accept(sd, &cli);
+	if (newsd <= 0)
+		die("accept on SOCK_SEQPACKET failed\n");
+
+	printf("SOCK_SEQPACKET connection established\n"
+	       "                        <-- %s\n", cbuf);
+
+	if (tipc_recv(newsd, msg, BUF_SZ, 1) <= 0)
+		die("unexpected message on STREAM socket\n");
+
+	printf("Received msg: %s on SOCK_SEQPACKET connection\n", msg);
+
+	sprintf(msg,"Huh?");
+	printf("Responding with: %s\n", msg);
+
+	if (tipc_send(newsd, msg, BUF_SZ) <= 0)
+		die("failed to respond\n");
+
+	tipc_ntoa(&cli, cbuf, BUF_SZ);
+
 	printf("-------------------------------------\n");
 	return newsd;
 }
@@ -132,27 +165,34 @@ static int recv_stream_setup(int sd)
 int main(int argc, char *argv[], char *dummy[])
 {
 	tipc_domain_t scope = tipc_own_cluster();
-	int rdmsd, strsd;
-	struct pollfd pfd[1];
+	int rdmsd, strsd, pktsd;
+	int i;
+	struct pollfd pfd[2];
 
 	printf("****** TIPC C API Demo Server Started ******\n\n");
 	
 	memset(pfd, 0, sizeof(pfd));
 	rdmsd = bind_service(RDM_SRV_TYPE, scope, SOCK_RDM, "RDM");
 	strsd = bind_service(STREAM_SRV_TYPE, 0, SOCK_STREAM, "STREAM");
+	pktsd = bind_service(SEQPKT_SRV_TYPE, 0, SOCK_SEQPACKET, "SEQPACKET");
 	
 	while (1) {
 		recv_rdm_msg(rdmsd);
 		pfd[0].fd = recv_stream_setup(strsd);
 		pfd[0].events = POLLIN | POLLHUP;
+		pfd[1].fd = recv_seqpacket_setup(pktsd);
+		pfd[1].events = POLLIN | POLLHUP;
 		
-		while (poll(pfd, 1, 3000000)) {
-			if (!(pfd[0].revents & POLLHUP))
-				continue;
-			printf("\n-------------------------------------\n");
-			printf("SOCK_STREAM connection hangup\n");
-			tipc_close(pfd[0].fd);
-			pfd[0].fd = 0;
+		while (poll(pfd, 2, 3000000)) {
+			for (i = 0; i < 2; i++) {
+				if (!(pfd[i].revents & POLLHUP))
+					continue;
+				printf("\n-------------------------------------\n");
+				printf("%s ", (i == 1) ? "SOCK_STREAM" : "SOCK_SEQPACKET");
+				printf("Connection hangup\n");
+				tipc_close(pfd[i].fd);
+				pfd[i].fd = 0;
+			}
 			break;
 		}
 	}
