@@ -180,10 +180,8 @@ int main(int argc, char *argv[], char *dummy[])
 {
 	bool up;
 	tipc_domain_t srv_node = 0;
-	tipc_domain_t neigh_node = 0;
 	char sbuf[BUF_SZ];
 	struct tipc_addr srv = {RDM_SRV_TYPE, SRV_INST, 0};
-	int local_bearer, remote_bearer;
 	struct pollfd pfd[6];
 
 	printf("****** TIPC C API Demo Client Started ******\n\n");
@@ -212,17 +210,6 @@ int main(int argc, char *argv[], char *dummy[])
 	if (tipc_srv_subscr(pfd[3].fd, SEQPKT_SRV_TYPE, 0, ~0, false, -1))
 		die("subscribe for SEQPACKET server failed\n");
 
-	/* Subscribe for neighbor nodes */
-	pfd[4].fd = tipc_neigh_subscr(0);
-	if (pfd[4].fd <= 0)
-		die("subscribe or neighbor nodes failed\n");		
-	pfd[4].events = POLLIN | POLLHUP;
-
-	/* Subscribe for neighbor links */
-	pfd[5].fd = tipc_link_subscr(0);
-	if (pfd[5].fd <= 0)
-		die("subscribe for neigbor links failed\n");		
-	pfd[5].events = POLLIN | POLLHUP;
 
 	while (poll(pfd, 6, 3000000)) {
 		if (pfd[1].revents & POLLHUP) {
@@ -246,26 +233,6 @@ int main(int argc, char *argv[], char *dummy[])
 				stream_service_demo(pfd[1].fd, up);
 			if (srv.type == SEQPKT_SRV_TYPE)
 				seqpacket_service_demo(pfd[2].fd, up);
-		}
-		if (pfd[4].revents & POLLIN) {
-			if (tipc_neigh_evt(pfd[4].fd, &neigh_node, &up))
-				die("reception of service event failed\n");
-			if (up)
-				printf("Found neighbor node %s\n",
-				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
-			else
-				printf("Lost contact with node %s\n",
-				       tipc_dtoa(neigh_node, sbuf, BUF_SZ));
-		}
-		if (pfd[5].revents & POLLIN) {
-			if (tipc_link_evt(pfd[5].fd, &neigh_node, &up,
-					  &local_bearer, &remote_bearer))
-				die("reception of service event failed\n");
-			tipc_linkname(sbuf,BUF_SZ, neigh_node, local_bearer);
-			if (up)
-				printf("Found link %s\n", sbuf);
-			else
-				printf("Lost link %s\n", sbuf);
 		}
 	}
 	printf("\n****** TIPC C API Demo Finished ******\n\n");

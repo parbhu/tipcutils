@@ -93,7 +93,7 @@ int tipc_accept(int sd, struct tipc_addr *src);
 
 /* Messaging:
  * - NULL pointer parameters are always accepted
- * - tipc_sendto() to an accepting socket performs implicit connect
+ * - tipc_sendto() to an accepting socket initiates two-way connect
  * - If (*err != 0) message is a potentially truncated rejected message
  * - If no err pointer given, tipc_recvfrom() returns 0 on rejected message
  */

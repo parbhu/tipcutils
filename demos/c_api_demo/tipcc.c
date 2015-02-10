@@ -200,7 +200,7 @@ int tipc_accept(int sd, struct tipc_addr *src)
 	socklen_t addrlen = sizeof(addr);
 	int rc;
 
-	rc = accept(sd, &addr, &addrlen);
+	rc = accept(sd, (struct sockaddr *) &addr, &addrlen);
 	if (src) {
 		src->type = 0;
 		src->instance = addr.addr.id.ref;
