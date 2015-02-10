@@ -94,17 +94,16 @@ int tipc_accept(int sd, struct tipc_addr *src);
 /* Messaging:
  * - NULL pointer parameters are always accepted
  * - tipc_sendto() to an accepting socket initiates two-way connect
- * - If (*err != 0) message is a potentially truncated rejected message
  * - If no err pointer given, tipc_recvfrom() returns 0 on rejected message
+ * - If (*err != 0) buf contains a potentially truncated rejected message
  */
-
-int tipc_recv(int sd, char* buf, size_t len, bool waitall);
 int tipc_recvfrom(int sd, char *buf, size_t len, struct tipc_addr *src,
 		  struct tipc_addr *dst, int *err);
-int tipc_send(int sd, const char *msg, size_t len);
+int tipc_recv(int sd, char* buf, size_t len, bool waitall);
 int tipc_sendmsg(int sd, const struct msghdr *msg);
 int tipc_sendto(int sd, const char *msg, size_t len,
 		const struct tipc_addr *dst);
+int tipc_send(int sd, const char *msg, size_t len);
 int tipc_mcast(int sd, const char *msg, size_t len,
 	       const struct tipc_addr *dst);
 
@@ -115,14 +114,14 @@ int tipc_mcast(int sd, const char *msg, size_t len,
 int tipc_topsrv_conn(tipc_domain_t topsrv_node);
 int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 		    bool all, int expire);
-int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *available, bool *expired);
+int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *up, bool *expired);
 bool tipc_srv_wait(const struct tipc_addr *srv, int expire);
 
 int tipc_neigh_subscr(tipc_domain_t topsrv_node);
-int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *available);
+int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *up);
 
 int tipc_link_subscr(tipc_domain_t topsrv_node);
-int tipc_link_evt(int sd, tipc_domain_t *neigh_node, bool *available,
+int tipc_link_evt(int sd, tipc_domain_t *neigh_node, bool *up,
 	          int *local_bearerid, int *remote_bearerid);
 char* tipc_linkname(char *buf, size_t len, tipc_domain_t peer, int bearerid);
 
