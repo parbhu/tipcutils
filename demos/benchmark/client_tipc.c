@@ -190,15 +190,21 @@ static void usage(char *app)
 static unsigned long long elapsednanos(struct timeval *from)
 {
 	struct timeval now;
+	long long from_ns, now_ns;
 
 	gettimeofday(&now, 0);
 
+	from_ns = from->tv_sec * 1000000000 + from->tv_usec * 1000;
+	now_ns = now.tv_sec * 1000000000 + now.tv_usec * 1000;
+	return now_ns - from_ns;
+/*
 	if (now.tv_usec >= from->tv_usec)
 		return((now.tv_sec - from->tv_sec) * 1000000000 +
 		       (now.tv_usec - from->tv_usec) * 1000);
 	else
 		return((now.tv_sec - 1 - from->tv_sec) * 1000000000 +
 		       (now.tv_usec + 1000000 - from->tv_usec) * 1000);
+*/
 }
 
 static void print_throughput_header(void)
