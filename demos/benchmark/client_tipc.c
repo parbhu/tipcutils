@@ -187,24 +187,15 @@ static void usage(char *app)
 	fprintf(stderr, "\tinterface to use for tcp (default: last found)\n");
 }
 
-static unsigned long long elapsednanos(struct timeval *from)
-{
-	struct timeval now;
-	long long from_ns, now_ns;
-
-	gettimeofday(&now, 0);
-
-	from_ns = from->tv_sec * 1000000000 + from->tv_usec * 1000;
-	now_ns = now.tv_sec * 1000000000 + now.tv_usec * 1000;
-	return now_ns - from_ns;
-/*
-	if (now.tv_usec >= from->tv_usec)
-		return((now.tv_sec - from->tv_sec) * 1000000000 +
-		       (now.tv_usec - from->tv_usec) * 1000);
-	else
-		return((now.tv_sec - 1 - from->tv_sec) * 1000000000 +
-		       (now.tv_usec + 1000000 - from->tv_usec) * 1000);
-*/
+static unsigned long long elapsedusec(struct timeval *from)
+ {
+ 	struct timeval now;
+	long long from_us, now_us;
+ 
+ 	gettimeofday(&now, 0);
+	from_us = from->tv_sec * 1000000 + from->tv_usec;
+	now_us = now.tv_sec * 1000000 + now.tv_usec;
+	return now_us - from_us;
 }
 
 static void print_throughput_header(void)
@@ -497,13 +488,13 @@ int main(int argc, char *argv[], char *dummy[])
 		master_from_srv(&cmd, 0, 0);
 
 		/* Calculate and present result: */
-		elapsed = elapsednanos(&start_time);
+		elapsed = elapsedusec(&start_time);
 		latency = elapsed/msgcnt;
-		latency_us = latency/1000;
+		latency_us = latency;
 		latency_dec = latency%100;
 
 		printf(" %11llu  | %15llu.%llu  |\n", 
-		       elapsed/1000000, latency_us, latency_dec);
+		       elapsed/1000, latency_us, latency_dec);
 		printf("+--------------------------------------------------"
 		       "-------------------+\n");
 	}
@@ -562,11 +553,11 @@ end_latency:
 		}
 
 		/* Calculate and present result: */
-		elapsed = elapsednanos(&start_time);
-		msg_per_sec = (msgcnt * num_clients * 1000000000) / elapsed;
+		elapsed = elapsedusec(&start_time);
+		msg_per_sec = (msgcnt * num_clients * 1000000) / elapsed;
 		thruput = msg_per_sec * msglen * 8/1000000;
 		printf("| %8llu  | %12llu  | %11llu  | %14llu  |\n", 
-		       elapsed/1000000, msg_per_sec, thruput, thruput/num_clients);
+		       elapsed/1000, msg_per_sec, thruput, thruput/num_clients);
 		printf("+-------------------------------------------------"
 		       "--------------------------------------------+\n");
 	}
@@ -603,7 +594,6 @@ static int select_ip(struct srv_info *sinfo, char* ifname)
 	int s_ip, c_ip, best_ip = 0;
 	int best_prefix = 32;
 	int mask, shift;
-	struct in_addr ip_addr;
 
 	get_ip_list(&cinfo, ifname);
 
@@ -611,7 +601,6 @@ static int select_ip(struct srv_info *sinfo, char* ifname)
 	srv_ip_num = ntohs(sinfo->num_ips);
 	for (; s_ipno < srv_ip_num; s_ipno++) {
 		s_ip = ntohl(sinfo->ips[s_ipno]);
-		ip_addr.s_addr = htonl(s_ip);
 
 		for (c_ipno = 0; c_ipno < clnt_ip_num; c_ipno++) {
 			c_ip = ntohl(cinfo.ips[c_ipno]);
@@ -629,7 +618,5 @@ static int select_ip(struct srv_info *sinfo, char* ifname)
 			}
 		}
 	}
-
-	ip_addr.s_addr = htonl(best_ip);
 	return best_ip;
 }
