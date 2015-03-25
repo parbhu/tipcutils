@@ -231,17 +231,18 @@ static void print_latency_header(void)
 	       "----------------------------+\n");
 }
 
+static const char *impstr[4] = {"LOW", "MEDIUM", "HIGH", "CRITICAL"};
+
 static void client_create(unsigned int clnt_id, ushort tcp_port, int tcp_addr)
 {
 	int peer_sd;
-	int imp = TIPC_MEDIUM_IMPORTANCE;
+	int imp = clnt_id % 4;
 	uint cmd, msglen, msgcnt, bounce;
 	struct sockaddr_in tcp_dest;
-
 	fflush(stdout);
 	if (fork())
 		return;
-	dprintf("Client %u created\n", clnt_id);
+	printf("Client %u created with importance %s\n", clnt_id, impstr[imp]);
 	client_id = clnt_id;
 	close(master_clnt_sd);
 	
