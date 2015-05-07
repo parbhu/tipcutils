@@ -161,7 +161,7 @@ int tipc_bind(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 	return bind(sd, (struct sockaddr *)&addr, sizeof(addr));
 }
 
-int tipc_unbind(int sd, uint32_t type, uint32_t upper, uint32_t lower)
+int tipc_unbind(int sd, uint32_t type, uint32_t lower, uint32_t upper)
 
 {
 	struct sockaddr_tipc addr = {

@@ -33,7 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Version 0.9.2: Jon Maloy, 2015
+ * Version 0.9.3: Jon Maloy, 2015
  *
  * ------------------------------------------------------------------------
  */
@@ -83,9 +83,9 @@ int tipc_sock_rejectable(int sd);
 int tipc_close(int sd);
 int tipc_sockid(int sd, struct tipc_addr *id);
 
-int tipc_bind(int sd, uint32_t type, uint32_t upper, uint32_t lower,
+int tipc_bind(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 	      tipc_domain_t scope);
-int tipc_unbind(int sd, uint32_t type, uint32_t upper, uint32_t lower);
+int tipc_unbind(int sd, uint32_t type, uint32_t lower, uint32_t upper);
 
 int tipc_connect(int sd, const struct tipc_addr *dst);
 int tipc_listen(int sd, int backlog);
