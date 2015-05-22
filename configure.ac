@@ -14,19 +14,11 @@ fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/tipc.h])
-AC_CHECK_HEADERS([linux/tipc_netlink.h], [tipc_api=new],[tipc_api=old])
 
 # Checks for library functions.
 PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
 PKG_CHECK_MODULES([LIBDAEMON], [libdaemon])
 CFLAGS="$CFLAGS -Wall -fno-strict-aliasing"
-
-AC_MSG_CHECKING([TIPC netlink API])
-AC_MSG_RESULT([$tipc_api])
-if test "x$tipc_api" = "xnew"; then
-	AC_DEFINE(TIPC_NEW_NL_API, 1, [using new tipc tool])
-fi
-AM_CONDITIONAL(TIPC_NEW_NL_API, test "x$tipc_api" = "xnew")
 
 AC_CHECK_TYPE(struct tipc_sioc_ln_req, [tipc_lss=yes],[], [[#include <linux/tipc.h>]])
 AM_CONDITIONAL(TIPC_LINK_STATE_SUBSCRITION, test "x$tipc_lss" = "xyes")
@@ -35,7 +27,6 @@ AC_CONFIG_FILES([
 	Makefile
 	tipc-config/Makefile
 	tipc-pipe/Makefile
-	tipc/Makefile
 	ptts/Makefile
 	demos/Makefile
 	demos/benchmark/Makefile
