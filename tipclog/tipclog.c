@@ -5,7 +5,6 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
-#include <linux/tipc.h>
 
 #include <libdaemon/dfork.h>
 #include <libdaemon/dsignal.h>
@@ -13,6 +12,8 @@
 #include <libdaemon/dpid.h>
 #include <libdaemon/dexec.h>
 
+/*No, this should not be <linux/tipc.h>*/
+#include "tipc.h"
 
 struct tipc_subscr node_sub = {
 	.usr_handle = "node_evt"
