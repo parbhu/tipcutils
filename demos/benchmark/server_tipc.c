@@ -49,6 +49,8 @@ static void srv_to_master(uint cmd, struct srv_info *sinfo)
 {
 	struct srv_to_master_cmd c;
 
+	wait_for_name(MASTER_NAME, 0, MAX_DELAY);
+
 	memset(&c, 0, sizeof(c));
 	c.cmd = htonl(cmd);
 	c.tipc_addr = htonl(own_node_addr);
@@ -119,11 +121,10 @@ reset:
 		lstn_sd = socket (AF_TIPC, SOCK_STREAM,0);
 		if (lstn_sd < 0)
 			die("Server master: can't create listening socket\n");
-		
+
 		if (bind(lstn_sd, (struct sockaddr *)&srv_lstn_addr,
 			 sizeof(srv_lstn_addr)) < 0)
 			die("TIPC Server master: failed to bind port name\n");
-
 		printf("******   TIPC Listener Socket Created    ******\n");
 		srv_to_master(SRV_INFO, 0);
 		close(master_sd);
@@ -183,7 +184,6 @@ reset:
 		master_sd = socket(AF_TIPC, SOCK_RDM, 0);
 		if (master_sd < 0)
 			die("Server: Can't create socket to master\n");
-		
 		if (bind(master_sd, (struct sockaddr *)&srv_ctrl_addr,
 			 sizeof(srv_ctrl_addr)))
 			die("Server: Failed to bind to master socket\n");

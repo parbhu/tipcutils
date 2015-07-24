@@ -429,6 +429,7 @@ int main(int argc, char *argv[], char *dummy[])
 
 	/* Send connection type and buffer allocation size to server: */
 	master_to_srv(conn_typ, last_msglen, 0, 0);
+	wait_for_name(SRV_LSTN_NAME, 0, MAX_DELAY);
 
 	/* Wait for ack */
 
