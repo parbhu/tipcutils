@@ -65,9 +65,9 @@ static struct tipc_addr srv = {
 static char buf[BUF_LEN];
 static char srvbuf[20];
 
-void mcast_transmitter(void)
+void mcast_transmitter(int len)
 {
-	int sd, msglen;
+	int sd;
 	
 	printf("Waiting for first server\n");
 	tipc_srv_wait(&srv, -1);
@@ -75,11 +75,9 @@ void mcast_transmitter(void)
 	if (sd < 0)
 		die("Failed to create client socket\n");
 
-	msglen = 66000;
-
-	printf("Transmitting messages of size %u bytes\n", msglen);
+	printf("Transmitting messages of size %u bytes\n", len);
 	while(1) {
-		if (0 >= tipc_mcast(sd, buf, msglen, &srv))
+		if (0 >= tipc_mcast(sd, buf, len, &srv))
 			die("Failed to send multicast\n");
 	}
 }
@@ -137,15 +135,45 @@ void mcast_receiver_subscriber(void)
 
 int main(int argc, char *argv[], char *envp[])
 {
+	int c;
+	int len = 66000;
+	bool xmit_only = false, rcvr_only = false;
+
+	while ((c = getopt(argc, argv, ":csl:")) != -1) {
+		switch (c) {
+		case 'l':
+			if (optarg)
+				len = atoi(optarg);
+			continue;
+		case 'c':
+			xmit_only = true;
+			continue;
+		case 's':
+			rcvr_only = true;
+			continue;
+		default:
+			fprintf(stderr, "Usage:\n");
+			fprintf(stderr," %s ", argv[0]);
+			fprintf(stderr, "[-c] [-s] [-l <msglen>]\n"
+                         "       [-c client (xmitit) mode only (default off)\n"
+                         "       [-s server (receive) mode only (default off)\n"
+		         "       [-l <msglen>] message size (default 66000)\n");
+			return 1;
+		}
+	}
+
 	srv.domain = tipc_own_cluster();
 	tipc_ntoa(&srv, srvbuf, sizeof(srvbuf));
 
-	if (!fork())
+	if (!xmit_only && !fork())
 		mcast_receiver();
+
+	if (rcvr_only)
+		while(1);
 
 	if (!fork())
 		mcast_receiver_subscriber();
 
-	mcast_transmitter();
+	mcast_transmitter(len);
 	exit(0);
 }
