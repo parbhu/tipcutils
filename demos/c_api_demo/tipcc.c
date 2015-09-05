@@ -252,9 +252,9 @@ int tipc_mcast(int sd, const char *msg, size_t msg_len,
 	};
 	if(!dst)
 		return -1;
-	addr.addr.name.name.type = dst->type;
-	addr.addr.name.name.instance = dst->instance;
-
+	addr.addr.nameseq.type = dst->type;
+	addr.addr.nameseq.lower = dst->instance;
+	addr.addr.nameseq.upper = dst->instance;
 	if (dst->domain != tipc_own_cluster())
 		return -ENOTSUP;
 	return sendto(sd, msg, msg_len, 0,

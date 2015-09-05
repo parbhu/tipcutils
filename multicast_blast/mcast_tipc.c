@@ -61,14 +61,22 @@ static struct tipc_addr srv = {
 	.domain = 0
 };
 
+#define MAX_RCVRS 0xff
+
 #define BUF_LEN 66000
 static char buf[BUF_LEN];
+static unsigned int *seqno = (unsigned int*)buf;
 static char srvbuf[20];
+
+struct sndr {
+	unsigned int rcv_nxt;
+	unsigned int cnt;
+} sndrs[MAX_RCVRS + 1];
 
 void mcast_transmitter(int len)
 {
 	int sd;
-	
+
 	printf("Waiting for first server\n");
 	tipc_srv_wait(&srv, -1);
 	sd = tipc_socket(SOCK_RDM);
@@ -77,6 +85,7 @@ void mcast_transmitter(int len)
 
 	printf("Transmitting messages of size %u bytes\n", len);
 	while(1) {
+		*seqno = htonl(ntohl(*seqno) + 1);
 		if (0 >= tipc_mcast(sd, buf, len, &srv))
 			die("Failed to send multicast\n");
 	}
@@ -84,8 +93,12 @@ void mcast_transmitter(int len)
 
 void mcast_receiver(void)
 {
-	int sd, cnt = 0;
-	
+	int sd;
+	struct tipc_addr src;
+	struct sndr *sndr;
+	char srcbuf[10];
+	unsigned int _seqno, rcv_nxt, gap;
+
 	prctl(PR_SET_PDEATHSIG, SIGHUP);
 
 	sd = tipc_socket(SOCK_RDM);
@@ -98,10 +111,19 @@ void mcast_receiver(void)
 	printf("Server socket created and bound to %s\n", srvbuf);
 
 	while (1) {
-		if (0 >= tipc_recvfrom(sd, buf, BUF_LEN, NULL, NULL, 0))
+		if (0 >= tipc_recvfrom(sd, buf, BUF_LEN, &src, NULL, 0))
 			die("unexpected message on multicast server socket\n");
-		if (!(++cnt % 10000))
-			printf("Now received %u messages\n", cnt);
+
+		tipc_dtoa(src.domain, srcbuf, sizeof(srcbuf));
+		sndr = &sndrs[src.domain & MAX_RCVRS];
+		_seqno = ntohl(*seqno);
+		rcv_nxt = sndr->rcv_nxt;
+		gap = rcv_nxt - _seqno;
+		if (gap && sndr->cnt)
+			printf("Missing %u msgs from %s\n", gap, srcbuf);
+		sndr->rcv_nxt = _seqno + 1;
+		if (!(++sndr->cnt % 10000))
+			printf("Now at %u msgs from %s\n", sndr->cnt, srcbuf);
 	}
 }
 
@@ -162,6 +184,7 @@ int main(int argc, char *argv[], char *envp[])
 		}
 	}
 
+	memset(buf, 0xff, sizeof(buf));
 	srv.domain = tipc_own_cluster();
 	tipc_ntoa(&srv, srvbuf, sizeof(srvbuf));
 
