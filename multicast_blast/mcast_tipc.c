@@ -118,7 +118,7 @@ void mcast_receiver(void)
 		sndr = &sndrs[src.domain & MAX_RCVRS];
 		_seqno = ntohl(*seqno);
 		rcv_nxt = sndr->rcv_nxt;
-		gap = rcv_nxt - _seqno;
+		gap = _seqno - rcv_nxt;
 		if (gap && sndr->cnt)
 			printf("Missing %u msgs from %s\n", gap, srcbuf);
 		sndr->rcv_nxt = _seqno + 1;
