@@ -414,7 +414,6 @@ int options_init()
 	add_literal_option(recvq_depth);
 	add_literal_option(dest_droppable);
 	add_flag_option("rdm", &sock_type, SOCK_RDM);
-	add_flag_option("pct", &sock_type, SOCK_PACKET);
 	add_flag_option("stm", &sock_type, SOCK_STREAM);
 	add_flag_option("sqp", &sock_type, SOCK_SEQPACKET);
 	add_flag_option("mc", &addr_type, TIPC_ADDR_MCAST);
@@ -510,8 +509,6 @@ shortcuts:\n\
 \n\
        --rdm\n\
                sock_type = SOCK_RDM\n\
-       --pct\n\
-               sock_type = SOCK_PACKET\n\
        --stm\n\
                * sock_type = SOCK_STREAM\n\
        --sqp\n\
