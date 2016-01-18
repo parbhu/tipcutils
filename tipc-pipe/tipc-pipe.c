@@ -624,54 +624,47 @@ int run_client(int tipc)
 }
 
 /*
- * wait_for_server - wait for TIPC server presence on network.
- * Used for synchronization client with server.
- *
- * returns TIPC_PUBLISHED or TIPC_WITHDRAWN or TIPC_SUBSCR_TIMEOUT
- *
+ * run_topology_client - Perform subscriptions for tipc instance.
+ * Used for :
+ * - synchronization client with server.
+ *   - Montior other tipc instances presence on network.
  */
-
-int wait_for_server(__u32 name_instance, int wait)
-{
-	struct sockaddr_tipc topsrv;
-	struct tipc_subscr subscr;
-	struct tipc_event event;
-
-	int sd = socket(AF_TIPC, SOCK_SEQPACKET, 0);
-	tipc_addr_set(&topsrv, TIPC_ADDR_NAME, TIPC_TOP_SRV, TIPC_TOP_SRV, 0);
-	chkne(connect(sd, (void *)&topsrv, sizeof(topsrv)));
-	subscr.seq.type = htonl(server_type);
-	subscr.seq.lower = subscr.seq.upper = htonl(name_instance);
-	subscr.timeout = htonl(wait);
-	subscr.filter = htonl(TIPC_SUB_SERVICE);
-
-	chkne(write(sd, &subscr, sizeof(subscr)));
-	chkne(read(sd, &event, sizeof(event)));
-	close(sd);
-	return ntohl(event.event);
-}
-
-int run_topology_client(int lower, int upper)
+int run_topology_client(int lower, int upper, unsigned int timeout)
 {
 	struct sockaddr_tipc topsrv;
 	struct tipc_subscr subscr = { {0} };
 
 	int sd = socket(AF_TIPC, SOCK_SEQPACKET, 0);
+	const char *event_name [] = {
+		[TIPC_PUBLISHED] = "TIPC_PUBLISHED",
+		[TIPC_WITHDRAWN] = "TIPC_WITHDRAWN",
+		[TIPC_SUBSCR_TIMEOUT] = "TIPC_SUBSCR_TIMEOUT",
+	};
+
 	tipc_addr_set(&topsrv, TIPC_ADDR_NAME, TIPC_TOP_SRV, TIPC_TOP_SRV, 0);
 	chkne(connect(sd, (void *)&topsrv, sizeof(topsrv)));
 	subscr.seq.type = htonl(server_type);
 	subscr.seq.lower = htonl(lower);
 	subscr.seq.upper = htonl(upper);
-	subscr.timeout = htonl(-1);
+	subscr.timeout = htonl(timeout);
 	subscr.filter = htonl(TIPC_SUB_SERVICE);
 
 	chkne(write(sd, &subscr, sizeof(subscr)));
 	do {
 		struct tipc_event event = { 0 };
 		ret = read(sd, &event, sizeof(event));
-		fprintf(stderr, "TIPC_TOP_SRV event %d %d %d\n",
-		        ntohl(event.event), ntohl(event.found_lower), ntohl(event.found_upper));
-	} while (ret >= 0);
+		fprintf(stderr, "TIPC_TOP_SRV event %s ",
+			event_name[ntohl(event.event)]);
+		if (ntohl(event.event) == TIPC_SUBSCR_TIMEOUT) {
+			fprintf(stderr, "lower:%u upper:%u \n",
+				ntohl(event.s.seq.lower),
+				ntohl(event.s.seq.upper));
+		} else {
+			fprintf(stderr, "lower:%u upper:%u \n",
+				ntohl(event.found_lower),
+				ntohl(event.found_upper));
+		}
+	} while ((timeout == TIPC_WAIT_FOREVER) && (ret >= 0));
 	close(sd);
 	return ret;
 }
@@ -690,10 +683,10 @@ int main(int argc, char *argv[])
 	trln();
 	tipc_addr_set(&addr_sk, addr_type, server_type, addr1, addr2);
 	if (wait_peer)
-		wait_for_server(addr1, wait_peer);
+		run_topology_client(addr1, addr1, wait_peer);
 	switch (mode) {
 	case topology_client:
-		run_topology_client(addr1, addr2);
+		run_topology_client(addr1, addr2, TIPC_WAIT_FOREVER);
 		break;
 	case single_listener:
 	case multi_server:
