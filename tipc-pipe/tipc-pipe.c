@@ -73,8 +73,7 @@
 ( ret = (a),\
        ((ret<0)?timestamp(),fprintf(stderr,"%s:%i %s FAIL errno = %i \"%s\" %i = %s\n",\
        __FILE__,__LINE__,__FUNCTION__,errno,strerror(errno),ret,#a)\
-        :0),\
-       ret)
+        :0))
 #define trvd_(d) timestamp(), fprintf(stderr,#d" = %d ",(int)d)
 #define trvx_(d) timestamp(), fprintf(stderr,#d" = %x ",(int)d)
 #define trln() fprintf(stderr,"\n");
@@ -288,8 +287,10 @@ again:
 		trln();
 #endif
 		i++;
-		if ((pfd[0].revents & POLLHUP || pfd[1].revents & POLLHUP) && !data_in_len)
+		if ((pfd[0].revents & POLLHUP || pfd[1].revents & POLLHUP) && !data_in_len) {
+			fprintf(stderr, "Hangup received from Peer\n");
 			break;
+		}
 		nanosleep(&((struct timespec) {.tv_nsec = 1000000 * delay}), NULL);
 	}
 	return len;
