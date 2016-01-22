@@ -28,6 +28,7 @@ AC_CONFIG_FILES([
 	tipc-config/Makefile
 	tipc-pipe/Makefile
 	ptts/Makefile
+	multicast_blast/Makefile
 	demos/Makefile
 	demos/benchmark/Makefile
 	demos/connection_demo/Makefile
