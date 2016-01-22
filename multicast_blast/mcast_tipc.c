@@ -65,17 +65,25 @@ static struct tipc_addr srv = {
 
 #define BUF_LEN 66000
 static char buf[BUF_LEN];
-static unsigned int *seqno = (unsigned int*)buf;
+
+struct req {
+	unsigned int seqno;
+	unsigned int remaining_pkts;
+};
+
 static char srvbuf[20];
+static int verbose;
 
 struct sndr {
 	unsigned int rcv_nxt;
 	unsigned int cnt;
+	unsigned int total_cnt;
 } sndrs[MAX_RCVRS + 1];
 
-void mcast_transmitter(int len)
+void mcast_transmitter(int len, unsigned int count)
 {
 	int sd;
+	struct req *pkt = (struct req *)buf;
 
 	printf("Waiting for first server\n");
 	tipc_srv_wait(&srv, -1);
@@ -84,10 +92,12 @@ void mcast_transmitter(int len)
 		die("Failed to create client socket\n");
 
 	printf("Transmitting messages of size %u bytes\n", len);
-	while(1) {
-		*seqno = htonl(ntohl(*seqno) + 1);
+	while(count) {
+		pkt->seqno = htonl(ntohl(pkt->seqno) + 1);
+		pkt->remaining_pkts = htonl(count);
 		if (0 >= tipc_mcast(sd, buf, len, &srv))
 			die("Failed to send multicast\n");
+		count--;
 	}
 }
 
@@ -98,6 +108,7 @@ void mcast_receiver(void)
 	struct sndr *sndr;
 	char srcbuf[10];
 	unsigned int _seqno, rcv_nxt, gap;
+	struct req *pkt = (struct req *)buf;
 
 	prctl(PR_SET_PDEATHSIG, SIGHUP);
 
@@ -116,14 +127,31 @@ void mcast_receiver(void)
 
 		tipc_dtoa(src.domain, srcbuf, sizeof(srcbuf));
 		sndr = &sndrs[src.domain & MAX_RCVRS];
-		_seqno = ntohl(*seqno);
+		_seqno = ntohl(pkt->seqno);
 		rcv_nxt = sndr->rcv_nxt;
 		gap = _seqno - rcv_nxt;
-		if (gap && sndr->cnt)
+		if (gap && sndr->cnt) {
 			printf("Missing %u msgs from %s\n", gap, srcbuf);
+		}
 		sndr->rcv_nxt = _seqno + 1;
-		if (!(++sndr->cnt % 10000))
-			printf("Now at %u msgs from %s\n", sndr->cnt, srcbuf);
+		if (!sndr->cnt) {
+			sndr->total_cnt = ntohl(pkt->remaining_pkts);
+		}
+		if (!(++sndr->cnt % 10000)) {
+			if (verbose)
+				printf("Now at %u msgs from %s\n", sndr->cnt, srcbuf);
+		}
+
+		if (ntohl(pkt->remaining_pkts) == 1) {
+			if (sndr->cnt == sndr->total_cnt) {
+				printf("Test OK for %u pkts from %s\n",
+				       sndr->cnt, srcbuf);
+			} else {
+				printf("Test NOK for %u pkts from %s, missing %u\n",
+				       sndr->cnt, srcbuf, sndr->total_cnt - sndr->cnt);
+			}
+			memset(sndr, 0, sizeof(struct sndr));
+		}
 	}
 }
 
@@ -148,10 +176,12 @@ void mcast_receiver_subscriber(void)
 			die("reception of service event failed\n");
 
 		tipc_dtoa(rcvr.domain, node, sizeof(node));
-		if (up)
-			printf("New receiver discovered on node %s\n", node);
-		else
-			printf("Receiver on node %s lost\n", node);
+		if (verbose) {
+			if (up)
+				printf("New receiver discovered on node %s\n", node);
+			else
+				printf("Receiver on node %s lost\n", node);
+		}
 	}
 }
 
@@ -159,9 +189,10 @@ int main(int argc, char *argv[], char *envp[])
 {
 	int c;
 	int len = 66000;
+	unsigned int count = ~0;
 	bool xmit_only = false, rcvr_only = false;
 
-	while ((c = getopt(argc, argv, ":csl:")) != -1) {
+	while ((c = getopt(argc, argv, ":csvl:n:")) != -1) {
 		switch (c) {
 		case 'l':
 			if (optarg)
@@ -170,8 +201,15 @@ int main(int argc, char *argv[], char *envp[])
 		case 'c':
 			xmit_only = true;
 			continue;
+		case 'v':
+			verbose++;
+			continue;
 		case 's':
 			rcvr_only = true;
+			continue;
+		case 'n':
+			if (optarg)
+				count = atoi(optarg);
 			continue;
 		default:
 			fprintf(stderr, "Usage:\n");
@@ -179,7 +217,9 @@ int main(int argc, char *argv[], char *envp[])
 			fprintf(stderr, "[-c] [-s] [-l <msglen>]\n"
                          "       [-c client (xmitit) mode only (default off)\n"
                          "       [-s server (receive) mode only (default off)\n"
-		         "       [-l <msglen>] message size (default 66000)\n");
+		         "       [-l <msglen>] message size (default 66000)\n"
+                         "       [-v increase verbosity (default off)\n"
+		         "       [-n <num_of_msgs>] number of messages to send (default 0xfffffff)\n");
 			return 1;
 		}
 	}
@@ -197,6 +237,6 @@ int main(int argc, char *argv[], char *envp[])
 	if (!fork())
 		mcast_receiver_subscriber();
 
-	mcast_transmitter(len);
+	mcast_transmitter(len, count);
 	exit(0);
 }
