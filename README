@@ -1,16 +1,15 @@
 TIPC utilities package for Linux README
 
-Last updated: 02 Sep 2014
+Last updated: 05 Feb 2016
 
 
 This directory contains a variety of utility programs for use with Linux TIPC,
 including:
 
-0) tipc
-A new configuration tool for tipc that utilizes the new tipc netlink kernel API
-
 1) tipc-config
 An application for run-time configuration and monitoring of TIPC.
+Its recommended to use the new configuration tool named "tipc" in iproute2
+package for tipc, which utilizes the new tipc netlink kernel API.
 
 2) PTTS (Portable TIPC Test Suite)
 A basic sanity test suite that can be used to verify that major aspects of TIPC
@@ -24,6 +23,9 @@ by PTTS.
 4) TIPC pipe
 A netcat like program for tipc.
 
+5) tipclog
+A simple userspace network event logger running as daemon that logs link and
+node availability status.
 
 Building the utilities package
 ------------------------------
@@ -40,7 +42,7 @@ first, if you have the dist tarball you need only run:
     ./configure
     make
 
-If the TIPC includes are not found for some reason, 
+If the TIPC includes are not found for some reason,
 or you want to build agains a different set of kernel headers.
 You need to specify this directory in the configure stage as:
     ./configure  CFLAGS=-I<path to directory containing linux/tipc.h>
