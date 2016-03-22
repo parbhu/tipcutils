@@ -19,6 +19,11 @@ depcomp
 install-sh
 missing
 stamp-h1
+compile
+config.guess
+config.sub
+ltmain.sh
+libtool
 
 # And now the binaries
 demos/benchmark/client_tipc
