@@ -594,15 +594,6 @@ void server_mcast
         int numSubTest				 /* subtest currently being run */
 )
 {
-	static int expected[/*TIPC_MCAST_SUBTESTS*/7][TIPC_MCAST_SOCKETS] = {
-		{1,1,1,0,0},
-		{0,0,1,1,0},
-		{0,0,0,1,1},
-		{1,1,1,1,1},
-		{0,0,0,1,1},
-		{0,0,0,1,1},
-		{0,0,0,1,1}
-	};
 	static int exp_num[7] = {3,2,2,5,2,2,2};
 	int expected_burst[7] = {1, 1 , 1, 1, 200, 200, 40};
 	int expected_szs[7] = {100, 100 , 100, 100, 100, 1000, 66000};

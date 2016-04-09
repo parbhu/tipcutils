@@ -589,7 +589,7 @@ int init(int argc, char *argv[])
 	return 0;
 }
 
-int run_server(tipc)
+int run_server(int tipc)
 {
 	trl();
 	chkne(bind(tipc, (void *)&addr_sk, sizeof(addr_sk)));

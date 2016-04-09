@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <time.h>
 #include <linux/types.h>
 #include <stdlib.h>
 #include <linux/tipc.h>
@@ -39,7 +41,7 @@ static void server()
 	int sd, n;
 	struct sockaddr_tipc sa_sender = {0};
 	struct cmsghdr *cmsg;
-	struct tipc_name_seq *name;
+	struct tipc_name_seq *name = NULL;
 	char header[1];
 	char data[7];
 	char control[255];
