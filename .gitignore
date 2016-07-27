@@ -40,6 +40,8 @@ demos/stream_demo/server_tipc
 demos/topology_subscr_demo/client_tipc
 demos/topology_subscr_demo/server_tipc
 demos/iov_control/iov_control
+demos/c_api_demo/tipc_c_api_client
+demos/c_api_demo/tipc_c_api_server
 ptts/tipcTC
 ptts/tipcTS
 tipc-config/tipc-config
