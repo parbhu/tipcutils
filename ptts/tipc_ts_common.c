@@ -605,7 +605,7 @@ void connectSocketTIPC
 	int flags, n, error;
 	socklen_t len;
 	fd_set wset;
-	struct timeval	tval = {.tv_sec=1, .tv_usec=0};
+	struct timeval	tval = {.tv_sec=10, .tv_usec=0};
 
 	flags = fcntl(sockfd_C, F_GETFL, 0);
 	fcntl(sockfd_C, F_SETFL, flags | O_NONBLOCK);
