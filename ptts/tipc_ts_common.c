@@ -602,39 +602,11 @@ void connectSocketTIPC
         struct sockaddr_tipc *addr  /* address to use */
 )
 {
-	int flags, n, error;
-	socklen_t len;
-	fd_set wset;
-	struct timeval	tval = {.tv_sec=1, .tv_usec=0};
-
-	flags = fcntl(sockfd_C, F_GETFL, 0);
-	fcntl(sockfd_C, F_SETFL, flags | O_NONBLOCK);
-
-	if ((n = connect (sockfd_C, (struct sockaddr *)addr, sizeof (*addr))) < 0) {
-		if (errno != EINPROGRESS) {
-			tipc_printaddr(addr);
-			err("connect() error");
-		}
+	if (connect (sockfd_C, (struct sockaddr *)addr, sizeof (*addr)) < 0) {
+		tipc_printaddr(addr);
+		err("connect() error");
 	}
 
-	if (!n)
-		goto done;	/* connect completed immediately */
-
-	FD_ZERO(&wset);
-	FD_SET(sockfd_C, &wset);
-
-	if (select(sockfd_C+1, NULL, &wset, NULL, &tval) == 0)
-		err("select() after connect() timedout");
-
-	len = sizeof(error);
-	if (FD_ISSET(sockfd_C, &wset))
-		if (!getsockopt(sockfd_C, SOL_SOCKET, SO_ERROR, &error, &len))
-			goto done;
-
-	err("getsockopt");
-
-done:
-	fcntl(sockfd_C, F_SETFL, flags);	/* restore file status flags */
 }
 
 /**
