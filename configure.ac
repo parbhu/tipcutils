@@ -16,7 +16,6 @@ fi
 AC_CHECK_HEADERS([linux/tipc.h])
 
 # Checks for library functions.
-PKG_CHECK_MODULES(LIBNL3, libnl-3.0)
 PKG_CHECK_MODULES([LIBDAEMON], [libdaemon])
 CFLAGS="$CFLAGS -Wall -fno-strict-aliasing"
 
@@ -25,7 +24,6 @@ AM_CONDITIONAL(TIPC_LINK_STATE_SUBSCRITION, test "x$tipc_lss" = "xyes")
 
 AC_CONFIG_FILES([
 	Makefile
-	tipc-config/Makefile
 	tipc-pipe/Makefile
 	ptts/Makefile
 	multicast_blast/Makefile
