@@ -172,7 +172,7 @@ void mcast_receiver_subscriber(void)
 		die("subscription for server failed\n");
 
 	while (1) {
-		if (tipc_srv_evt(sd, &rcvr, &up, 0))
+		if (tipc_srv_evt(sd, &rcvr, 0, &up, 0))
 			die("reception of service event failed\n");
 
 		tipc_dtoa(rcvr.domain, node, sizeof(node));

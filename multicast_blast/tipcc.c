@@ -52,17 +52,23 @@
 
 static tipc_domain_t own_node = 0;
 
-static inline bool my_scope(tipc_domain_t domain)
+static inline __u8 domain2scope(tipc_domain_t domain)
 {
 	if (!domain)
-		return true;
+		return TIPC_ZONE_SCOPE;
 	if (tipc_own_node() == domain)
-		return true;
+		return TIPC_NODE_SCOPE;
 	if (tipc_own_cluster() == domain)
-		return true;
+		return TIPC_CLUSTER_SCOPE;
 	if (tipc_own_zone() == domain)
-		return true;
-	return false;
+		return TIPC_ZONE_SCOPE;
+	else
+		return 0xffu;
+}
+
+static inline bool my_scope(tipc_domain_t domain)
+{
+	return domain2scope(domain) <= TIPC_NODE_SCOPE;
 }
 
 tipc_domain_t tipc_own_node(void)
@@ -146,13 +152,8 @@ int tipc_bind(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 		.addr.nameseq.lower      = lower,
 		.addr.nameseq.upper      = upper
 	};
+	addr.scope = domain2scope(scope);
 
-	if (tipc_own_node() == scope)
-		addr.scope = TIPC_NODE_SCOPE;
-	if (tipc_own_cluster() == scope)
-		addr.scope = TIPC_CLUSTER_SCOPE;
-	if (tipc_own_zone() == scope)
-		addr.scope = TIPC_ZONE_SCOPE;
 	/* TODO: introduce support for global scope in module */
 	if (!scope)
 		addr.scope = TIPC_ZONE_SCOPE;
@@ -209,6 +210,34 @@ int tipc_accept(int sd, struct tipc_addr *src)
 	return rc;
 }
 
+int tipc_join(int sd, struct tipc_addr *member)
+{
+#ifdef TIPC_GROUP_JOIN
+	struct tipc_mreq mreq = {
+		.type = member->type,
+		.instance = member->instance,
+		.scope = domain2scope(member->domain)
+	};
+
+	return setsockopt(sd, SOL_TIPC, TIPC_GROUP_JOIN, &mreq, sizeof(mreq));
+#else
+#warning "tipc_join() not supported by this kernel version"
+	printf("tipc_join() not supported by kernel version this was built for\n");
+	return -1;
+#endif
+}
+
+int tipc_leave(int sd)
+{
+#ifdef TIPC_GROUP_LEAVE
+	return setsockopt(sd, SOL_TIPC, TIPC_GROUP_LEAVE, NULL, 0);
+#else
+#warning "tipc_leave() not supported by this kernel version"
+	printf("tipc_leave() not supported by kernel version this was built for\n");
+	return -1;
+#endif
+}
+
 int tipc_send(int sd, const char *msg, size_t msg_len)
 {
 	return send(sd, msg, msg_len, 0);
@@ -255,8 +284,7 @@ int tipc_mcast(int sd, const char *msg, size_t msg_len,
 	addr.addr.nameseq.type = dst->type;
 	addr.addr.nameseq.lower = dst->instance;
 	addr.addr.nameseq.upper = dst->instance;
-	if (dst->domain != tipc_own_cluster())
-		return -ENOTSUP;
+	addr.scope = domain2scope(addr.scope);
 	return sendto(sd, msg, msg_len, 0,
 		      (struct sockaddr*)&addr, sizeof(addr));
 }
@@ -356,7 +384,8 @@ int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 	return 0;
 }
 
-int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *available, bool *expired)
+int tipc_srv_evt(int sd, struct tipc_addr *srv, struct tipc_addr *id,
+		 bool *available, bool *expired)
 {
 	struct tipc_event evt;
 
@@ -371,6 +400,11 @@ int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *available, bool *expired)
 		srv->type = evt.s.seq.type;
 		srv->instance = evt.found_lower;
 		srv->domain = evt.port.node;
+	}
+	if (id) {
+		id->type = 0;
+		id->instance = evt.port.ref;
+		id->domain = evt.port.node;
 	}
 	if (available)
 		*available = (evt.event == TIPC_PUBLISHED);
@@ -391,7 +425,7 @@ bool tipc_srv_wait(const struct tipc_addr *srv, int wait)
 	if (tipc_srv_subscr(sd, srv->type, srv->instance,
 			    srv->instance, false, wait))
 		rc = -1;
-	if (tipc_srv_evt(sd, 0, &up, &expired))
+	if (tipc_srv_evt(sd, 0, 0, &up, &expired))
 		rc = -1;
 	close(sd);
 	if (expired)
@@ -416,7 +450,7 @@ int tipc_neigh_evt(int sd, tipc_domain_t *neigh_node, bool *available)
 	struct tipc_addr srv;
 	int rc;
 
-	rc = tipc_srv_evt(sd, &srv, available, 0);
+	rc = tipc_srv_evt(sd, &srv, 0, available, 0);
 	if (neigh_node)
 		*neigh_node = srv.instance;
 	return rc;
@@ -481,7 +515,7 @@ char* tipc_dtoa(tipc_domain_t domain, char *buf, size_t len)
 
 char* tipc_ntoa(const struct tipc_addr *addr, char *buf, size_t len)
 {
-	snprintf(buf, len, "%u:%u:%u.%u.%u",
+	snprintf(buf, len, "%u:%u@%u.%u.%u",
 		 addr->type, addr->instance, tipc_zone(addr->domain),
 		 tipc_cluster(addr->domain),tipc_node(addr->domain));
 	buf[len] = 0;
@@ -491,7 +525,7 @@ char* tipc_ntoa(const struct tipc_addr *addr, char *buf, size_t len)
 char* tipc_rtoa(uint32_t type, uint32_t lower, uint32_t upper,
 		tipc_domain_t domain, char *buf, size_t len)
 {
-	snprintf(buf, len, "%u:%u:%u:%u.%u.%u", type, lower, upper,
+	snprintf(buf, len, "%u:%u:%u@%u.%u.%u", type, lower, upper,
 		 tipc_zone(domain), tipc_cluster(domain),tipc_node(domain));
 	buf[len] = 0;
 	return buf;

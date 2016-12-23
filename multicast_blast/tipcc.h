@@ -33,7 +33,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Version 0.9.3: Jon Maloy, 2015
+ * Version 0.9.5: Jon Maloy, 2016
  *
  * ------------------------------------------------------------------------
  */
@@ -90,6 +90,8 @@ int tipc_unbind(int sd, uint32_t type, uint32_t lower, uint32_t upper);
 int tipc_connect(int sd, const struct tipc_addr *dst);
 int tipc_listen(int sd, int backlog);
 int tipc_accept(int sd, struct tipc_addr *src);
+int tipc_join(int sd, struct tipc_addr *member);
+int tipc_leave(int sd);
 
 /* Messaging:
  * - NULL pointer parameters are always accepted
@@ -114,7 +116,8 @@ int tipc_mcast(int sd, const char *msg, size_t len,
 int tipc_topsrv_conn(tipc_domain_t topsrv_node);
 int tipc_srv_subscr(int sd, uint32_t type, uint32_t lower, uint32_t upper,
 		    bool all, int expire);
-int tipc_srv_evt(int sd, struct tipc_addr *srv, bool *up, bool *expired);
+int tipc_srv_evt(int sd, struct tipc_addr *srv, struct tipc_addr *id,
+		 bool *up, bool *expired);
 bool tipc_srv_wait(const struct tipc_addr *srv, int expire);
 
 int tipc_neigh_subscr(tipc_domain_t topsrv_node);
