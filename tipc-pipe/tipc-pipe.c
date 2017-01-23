@@ -268,6 +268,13 @@ int pipe_start(int tipc)
 	 */
 	while (poll(pfd, nfds, -1) > 0) {
 		data_in_len = 0;
+		if (tee && (pfd[2].revents & POLLIN)) {
+			chkne(len = recv(pfd[2].fd, buf, buf_size, 0));
+			if (len < 0)
+				break;
+			if (write(fileno(stdout), buf, len) != len)
+				exit(EXIT_FAILURE);
+		}
 		if (pfd[0].revents & POLLIN) {
 			len = data_in_len = read(fileno(stdin), buf, buf_size);
 #if VERBOSE
@@ -282,10 +289,11 @@ again:
 				nanosleep(&((struct timespec) {.tv_nsec = 100000000}), NULL);
 				goto again;
 			}
+again1:
 			chkne(len = tipc_write(fd_pair[1], buf, data_in_len));
 			if (len < 0 && errno == EAGAIN) {
 				nanosleep(&((struct timespec) {.tv_nsec = 100000000}), NULL);
-				goto again;
+				goto again1;
 			}
 		}
 		if (pfd[1].revents & POLLIN) {
@@ -295,13 +303,6 @@ again:
 			if (data_in_len < 0)
 				break;
 			if (write(fileno(stdout), buf, data_in_len) != data_in_len)
-				exit(EXIT_FAILURE);
-		}
-		if (tee && (pfd[2].revents & POLLIN)) {
-			chkne(len = recv(pfd[2].fd, buf, buf_size, 0));
-			if (len < 0)
-				break;
-			if (write(fileno(stdout), buf, len) != len)
 				exit(EXIT_FAILURE);
 		}
 		if (data_in_len > 0)
