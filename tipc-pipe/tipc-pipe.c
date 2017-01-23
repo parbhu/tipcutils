@@ -98,6 +98,7 @@ int data_check = 0;
 int data_size = 0;
 int wait_peer = 0;
 int replay = 0;
+int tee = 0;
 struct sockaddr_tipc addr_sk;
 __thread int ret;
 int addr1 = 0, addr2 = 0;
@@ -236,21 +237,36 @@ int check_generated_data(int tipc)
 
 int pipe_start(int tipc)
 {
-	struct pollfd pfd[2];
+	struct pollfd pfd[3];
 	struct sockaddr_tipc peer;
 	ssize_t len = 0;
 	ssize_t data_in_len = 0;
 	ssize_t len_total = 0;
+	int fd_pair[2];
 	int i = 0;
+	int nfds = 2;
 
+	if (tee) {
+		i = socketpair(AF_TIPC, SOCK_STREAM, 0, fd_pair);
+		if (i < 0) {
+			perror("Cannot open sockpair");
+			exit(EXIT_FAILURE);
+		}
+		fprintf(stderr, "Enabled tee support for sockpair\n");
+	}
 	trl();
 	pfd[0].fd = fileno(stdin);
 	pfd[0].events = POLLIN;
 	pfd[1].fd = tipc;
 	pfd[1].events = POLLIN;
+	if (tee) {
+		nfds = 3;
+		pfd[2].fd = fd_pair[0];
+		pfd[2].events = POLLIN;
+	}
 	/* Note: when zero length data received, transfer it and exit
 	 */
-	while (poll(pfd, sizeof(pfd) / sizeof(pfd[0]), -1) > 0) {
+	while (poll(pfd, nfds, -1) > 0) {
 		data_in_len = 0;
 		if (pfd[0].revents & POLLIN) {
 			len = data_in_len = read(fileno(stdin), buf, buf_size);
@@ -266,15 +282,26 @@ again:
 				nanosleep(&((struct timespec) {.tv_nsec = 100000000}), NULL);
 				goto again;
 			}
+			chkne(len = tipc_write(fd_pair[1], buf, data_in_len));
+			if (len < 0 && errno == EAGAIN) {
+				nanosleep(&((struct timespec) {.tv_nsec = 100000000}), NULL);
+				goto again;
+			}
 		}
 		if (pfd[1].revents & POLLIN) {
 			chkne(len = data_in_len = recvfrom(tipc, buf, buf_size, 0, (void *)&peer, &addr_size));
-			if (replay) {
+			if (replay)
 				addr_sk = peer;
-			}
 			if (data_in_len < 0)
 				break;
 			if (write(fileno(stdout), buf, data_in_len) != data_in_len)
+				exit(EXIT_FAILURE);
+		}
+		if (tee && (pfd[2].revents & POLLIN)) {
+			chkne(len = recv(pfd[2].fd, buf, buf_size, 0));
+			if (len < 0)
+				break;
+			if (write(fileno(stdout), buf, len) != len)
 				exit(EXIT_FAILURE);
 		}
 		if (data_in_len > 0)
@@ -292,6 +319,10 @@ again:
 			break;
 		}
 		nanosleep(&((struct timespec) {.tv_nsec = 1000000 * delay}), NULL);
+	}
+	if (tee) {
+		close(fd_pair[1]);
+		close(fd_pair[0]);
 	}
 	return len;
 }
@@ -423,6 +454,7 @@ int options_init()
 	add_flag_option("id", &addr_type, TIPC_ADDR_ID);
 	add_flag_option("data_check", &data_check, 1);
 	add_flag_option("replay", &replay, 1);
+	add_flag_option("tee", &tee, 1);
 	options[optnum].name = strdup("help");
 	options[optnum].has_arg = 0;
 	options[optnum].val = 'h';
@@ -505,6 +537,8 @@ default values are marked with '*'\n\
                run topology client\n\
        --replay\n\
                force connectionless server send input to last connected client \n\
+       --tee\n\
+               print the contents written to tipc socket on stdout \n\
 \n\
 shortcuts:\n\
 \n\
@@ -586,6 +620,7 @@ int init(int argc, char *argv[])
 		trvd_(dest_droppable);
 	trln();
 	assert(data_size + 1 < buf_size);
+
 	return 0;
 }
 
